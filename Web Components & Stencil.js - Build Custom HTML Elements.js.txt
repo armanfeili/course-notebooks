@@ -1,0 +1,1735 @@
+*** Web Copmonents ***
+
+it is your own HTML element. The HTML elements that are not built into the browser
+but that are created by you and you are now using them in your project.
+suppose that we have a 'modal.js' web component,
+-------------------------------------------------
+modal.js
+-------------------
+class Modal extends HTMLElement {
+  isOpen = false;
+
+  constructor() {
+    super();
+
+    this.attachShadow({ mode: 'open' });
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host([opened]) #backdrop,
+        :host([opened]) #modal {
+          opacity: 1;
+          pointer-events: all;
+        }
+
+        :host([opened]) #modal {
+          top: 15vh;
+        }
+
+        #backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, .75);
+          z-index: 1;
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        #modal {
+          position: fixed;
+          top: 10vh;
+          left: 25vw;
+          width: 50vw;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          background-color: #fff;
+          border-radius: 3px;
+          box-shadow: 0 2px 8px rgb(0, 0, 0, .26);
+          z-index: 2;
+          opacity: 0;
+          pointer-events: none;
+          transition: all 0.3s ease-out;
+        }
+
+        header {
+          padding: 1rem;
+          border-bottom: 1px solid #ccc;
+        }
+
+        ::slotted(h1) {
+          margin: 0;
+          font-size: 1.2rem;
+        }
+
+        #main {
+          padding: 1rem;
+        }
+
+        #actions {
+          display: flex;
+          justify-content: flex-end;
+          padding: 1rem;
+          border-top: 1px solid #ccc;
+        }
+
+        button {
+          margin: 0 .35rem;
+        }
+      </style>
+
+      <div id="backdrop"></div>
+
+      <div id="modal">
+        <header>
+          <slot name="title">Please Confirm Payment</slot>
+        </header>
+
+        <section id="main">
+          <slot></slot>
+        </section>
+
+        <section id="actions">
+          <button id="cancel-btn">Cancel</button>
+          <button id="confirm-btn">Okay</button>
+        </section>
+      </div>
+    `;
+
+    const slots = this.shadowRoot.querySelectorAll('slot');
+    slots[1].addEventListener('slotchange', (e) =>
+      console.dir(slots[1].assignedNodes()),
+    );
+
+    const cancelBtn = this.shadowRoot.querySelector('#cancel-btn');
+    const confirmBtn = this.shadowRoot.querySelector('#confirm-btn');
+
+    cancelBtn.addEventListener('click', this._cancel.bind(this));
+    confirmBtn.addEventListener('click', this._confirm.bind(this));
+
+    cancelBtn.addEventListener('cancel', () =>
+      console.log('Cancel inside the component'),
+    );
+
+    const backdrop = this.shadowRoot.querySelector('#backdrop');
+
+    backdrop.addEventListener('click', this._cancel.bind(this));
+  }
+
+  attributeChangedCallback(name, prev, next) {
+    if (name === 'opened') {
+      if (this.hasAttribute('opened'))
+        //  this.shadowRoot.querySelector('#backdrop').style.opacity = 1;
+        //  this.shadowRoot.querySelector('#backdrop').style.pointerEvents = 'all';
+        //  this.shadowRoot.querySelector('#modal').style.opacity = 1;
+        //  this.shadowRoot.querySelector('#modal').style.pointerEvents = 'all';
+        this.isOpen = true;
+    } else {
+      this.isOpen = false;
+    }
+  }
+
+  static get observedAttributes() {
+    return ['opened'];
+  }
+
+  open() {
+    this.setAttribute('opened', '');
+    this.isOpen = true;
+  }
+
+  hide() {
+    if (this.hasAttribute('opened')) this.removeAttribute('opened');
+    this.isOpen = false;
+  }
+
+  _cancel(event) {
+    this.hide();
+
+    const cancelEvent = new Event('cancel', { bubbles: true, composed: true });
+    event.target.dispatchEvent(cancelEvent);
+  }
+
+  _confirm() {
+    this.hide();
+
+    const confirmEvent = new Event('confirm');
+    this.dispatchEvent(confirmEvent);
+  }
+}
+
+customElements.define('uc-modal', Modal);
+
+-------------------------------------------------
+
+now we want to use it in index.html. because the above code will generate a new HTML tag named 'uc-modal'
+that we can use in any file we import this 'modal.js' file.
+-------------------------------------------------
+index.html
+-------------------
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+
+    <title>Web Components</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 2rem;
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <uc-modal>
+        <h1 slot="title">Please Confirm</h1>
+
+        <p>With your confirmation you agree to pay the full amount!</p>
+      </uc-modal>
+
+      <p>Please confirm your choice</p>
+
+      <button>Show Details & Confirm</button>
+    </main>
+
+    <script type="module">
+      import '/modal.js';
+
+      const modal = document.querySelector('uc-modal');
+
+      modal.addEventListener('confirm', () => console.log('Confirmed...'));
+      modal.addEventListener('cancel', () => console.log('Cancelled...'));
+
+      const confirmButton = document.querySelector('button');
+      confirmButton.addEventListener('click', () => {
+        // modal.setAttribute('opened', '')
+        if (!modal.isOpen) modal.open();
+      });
+    </script>
+  </body>
+</html>
+-------------------------------------------------
+
+here we have imported the 'modal.js' file in 'index.html'.
+we could also do that with:
+-------------------------------------------------
+<script src="modal.js"></script>
+-------------------------------------------------
+with that imported, we can use the '<us-modal>' element in the <body> tag.
+we should also pass some information between the opening and closing tag.
+-------------------------------------------------
+<uc-modal>
+    <h1 slot="title">Please Confirm</h1>
+
+    <p>With your confirmation you agree to pay the full amount!</p>
+</uc-modal>
+-------------------------------------------------
+there is a feature named 'slot' that tells that web component where to position that content.
+here we assigned the slot to 'title' because it's one of the slots of this component.
+
+with having these codes written, we still won't see anything in the page.
+we should add a special attribiute to <us-modal> tag, named 'opened'. like:
+----
+<uc-modal opened>
+    ...
+</uc-modal>
+----
+
+instead of hard-coding there, we can write opened as a programmatical way
+here we open the modal, after 3 seconds:
+--------------------------------------------------
+<script>
+    <uc-modal>
+        <h1 slot="title">Please Confirm</h1>
+
+        <p>With your confirmation you agree to pay the full amount!</p>
+    </uc-modal>
+</script>
+<script>
+    const modal = document.querySelector('uc-modal');   // select the modal tag
+    setTimeout(() => {
+        modal.open();   // open it after 3 seconds.
+    }, 3000);
+</script>
+--------------------------------------------------
+
+*** Web Component Specifications ***
+
+1.  Custom HTML Elements: Register your own HTML tag
+2.  Shadow DOM: all about having a separate DOM (a tree of DOM nodes) behind your custom element that is separated from normal DOM
+    this helps us to scoping our styles to our custom elements.
+3.  Templates & Slots:  your custome element will in the end just be a combination of default HTML elements
+    but we can add javascript logic to create more powerful widgets.
+    we define a template as a structure behind HTML element which is then rendered as a shodow DOM,
+    and slots are helpful for exposing certain entry points which allows us to pass dynamic content into our web components.
+4.  HTML imports: which allows us to import HTML files into HTML files
+
+Web Components allows us to encapsulate the UI and logic in one HTML tag.
+which can be reused across our pages and even reuse across multiple projects.
+
+frameworks like React have features more than just components (routing, state management,...)
+React has React-context, Angular has services. but components are not reusable in other parts of project
+if you use severarl frameworks.
+Web Component solves this problem because it's a vanilla javascript. so it's reusable.
+but it still doesn't have any features for routing or state management.
+
+*** Types Of Custom Elements ***
+
+Autonomous Elements: They are totally independent of existing HTML elements.
+Extended Built-in Elements: Custom Elements by extending built-in elements like 
+                            extending built-in <p> .
+
+here we want to create a Tooltip class based on some other based-class.
+here we used a based-class named 'HTMLElement'. this is a class (an object) built into the browser
+Every custom element has to extend that.(not Autonomous)
+Then, we create our own HTML tags with using customElements.
+this is an object that allows us to register our own custom elements by using define() method.
+the define() method, takes at least 2 arguments:
+    1.  the first is string and where you define your own HTML tag.
+        it has to be single word to consist of at least 2 parts separated by dash.
+        like: 'my-tooltip' . the 'tooltip' or 'my_tooltip' are not allowed!
+        Note: try to choose a uniqe prefix name before the real tag name. like the name of your company:
+        'uc-tooltip'
+    2.  the js class that holds the logic for this custom element.
+------------------------------------------------
+tooltip.js
+----------------
+class Tooltip extends HTMLElement {
+    constructor() {
+        super();
+        console.log("it is working!")
+    }
+}
+
+customElements.define('uc-tooltip', Tooltip);
+------------------------------------------------
+we want to show a tooltip if we hover on a text like "Web Component".
+so in the HTML file we have:
+------------------------------------------------
+index.html
+----------------
+<body>
+    <p><uc-tooltip>Web Components</uc-tooltip> are awsome!</p>
+</body>
+------------------------------------------------
+
+By writing 'this' keyword, we have access to all features we can use in normal HTML in js too.
+------------------------------------------------
+tooltip.js
+----------------
+class Tooltip extends HTMLElement {
+    constructor() {     // is a place for initializing, not for calling methods.
+        super();
+    }
+
+    connectedCallback() {
+        const tooltipIcon = document.createElement('span'); // we created a <span> element
+        tooltipIcon.textContent = ' (?)';  // the text for this icon will be a space + (?) ==> ' (?)' you could render your own image or png file.
+        this.appendChild(tooltipIcon);  // we can append a HTML element inside a custom element. we append the 'tooltipIcon'
+    }
+}
+
+customElements.define('uc-tooltip', Tooltip);
+------------------------------------------------
+
+*** Web Component Lifecycle ***
+
+1.  constructor()   =>  
+                    The first thing that gets executed. It gets executed when an object gets created
+                    based on our class. (it get called when an element is created.)
+                    when an element gets created in memory, it's not part of the DOM at the beginning.
+                    so constructor is good for basic initialization. But wrong place for accessing the DOM!
+                    because the custome element is not added to the DOM yet.
+                    you can use another method that gets called once this custom component has been mounted
+                    on to the browser's DOM: connectedCallback() method.
+
+2.  connectedCallback() =>  
+                    This is called when your element has been attached to the DOM and therefore,
+                    this is the place for DOM initializations. where you can add or access the DOM.
+
+3.  disconnectedCallback()  =>
+                    This also be executed automatically and will be called by the browser whenever
+                    your custom element (web component) is detached from the DOM.
+                    so when you destroy that node. this is a great method for cleanup work.
+                    like canceling HTTP request.
+
+4.  attributeChangedCallback()  =>
+                    for listening to attrubutes of your own element. for updating data and the DOM of your
+                    web component when some attribiutes which can be passed to your component, changed!
+
+
+*** Event Listeners ***
+
+we want to listen, when we hover on the 'tooltipIcon' element.
+so we use 'mouseenter' listener for that. and call a method we created by ourselves: 'this._showToolTip'
+And we want to add a method that we use just inside of this class.
+so we start such method with '_'. => 'this._showToolTip'
+------------------------------------------------
+class Tooltip extends HTMLElement {
+    constructor() {     // is a place for initializing, not for calling methods.
+        super();
+        this._tooltipContainer;     //  we created this class property which can be reached through out the whole class.
+    }                                   so all methods in this class can have access to this property.
+    
+
+    connectedCallback() {
+        const tooltipIcon = document.createElement('span'); 
+        tooltipIcon.textContent = ' (?)';  
+        tooltipIcon.addEventListener('mouseenter', this._showToolTip.bind(this));
+        tooltipIcon.addEventListener('mouseleave', this._hideToolTip.bind(this));
+        this.appendChild(tooltipIcon); 
+    }
+
+    _showToolTip() {
+         this._tooltipContainer = document.createElement('div');
+         this._tooltipContainer.textContent = 'This is the tooltip text!';  
+         this.appendChild(this._tooltipContainer); 
+         // with this code, whenever we hover on ' (?)', the tooltip will be shown. but it won't be removed if we hover mouse out of it.
+    }
+
+    _hideToolTip() {
+         this.removeChild(this._tooltipContainer); 
+    }
+}
+
+customElements.define('uc-tooltip', Tooltip);
+------------------------------------------------
+
+
+*** Attributes ***
+
+now if we want to set the 'text' for example from outside, we should use Attributes.
+we have lots of links for any tags. like 'href' for <a> tags
+but for custom elements, we can declare our attribiute with any name we want.
+here we declared a "text" attribute for <uc-tooltip> :
+------------------------------------------------
+index.html
+----------------
+<body>
+    <p><uc-tooltip text="Web Components is a set of standards.">Web Components</uc-tooltip> are awsome!</p>
+    <uc-tooltip>Here we go again.</uc-tooltip>
+</body>
+------------------------------------------------
+
+we passed the "Web Components is a set of standards." to the custom web component to show it as a tooltip.
+in the next <uc-tooltip> we didn't define any value for 'text' attribiute, it will show the default value.
+
+How to use that inside our <tooltip> ?
+in the constructor we can initialize a new variable named '_tooltipText'
+------------------------------------------------
+class Tooltip extends HTMLElement {
+    constructor() {     // is a place for initializing, not for calling methods.
+        super();
+        this._tooltipContainer;
+        this._tooltipText = "Some Default Texts";
+    }
+
+    connectedCallback() {
+
+      if(this.hasAttribute('text')) {
+        this._tooltipText = this.getAttribiute('text');   // get the 'text' attribiute from outside. 
+                                                             so we can use the _tooltipText value, in other places to show it.
+      }
+      
+        tooltipIcon.addEventListener('mouseenter', this._showToolTip.bind(this));
+        tooltipIcon.addEventListener('mouseleave', this._hideToolTip.bind(this));  
+        this.appendChild(tooltipIcon); 
+    }
+
+    _showToolTip() {
+         this._tooltipContainer = document.createElement('div');
+         this._tooltipContainer.textContent = this._tooltipText;  
+         this.appendChild(this._tooltipContainer); 
+    }
+}
+------------------------------------------------
+
+*** Styling ***
+
+one way is:
+
+------------------------------------------------
+_showToolTip() {
+      this._tooltipContainer = document.createElement('div');
+      this._tooltipContainer.textContent = this._tooltipText;
+
+      this._tooltipContainer.style.backgroundColor: 'black';
+      this._tooltipContainer.style.color: 'white';
+      this._tooltipContainer.style.position: 'absolute';
+
+      this.appendChild(this._tooltipContainer); 
+}
+------------------------------------------------
+
+*** Shodow DOM ***
+
+when we wrote :
+---
+connectedCallback() {
+        const tooltipIcon = document.createElement('span'); 
+        tooltipIcon.textContent = ' (?)';  
+        this.appendChild(tooltipIcon); 
+}
+---
+the new element was added to the DOM. but we wanted to make it hidden. that's why we use shodow DOM:
+so we add 'this.attachShadow({ mode: 'open'});' to the constructor.
+we assign 'open' to the mode of shadow, it means we can access to the shadow DOM from outside of this component.
+we can also assing 'close' to not allow it.(not recommended.)
+---
+constructor() {
+    super();
+    this._tooltipContainer;
+    this._tooltipText = "Some Default Texts";
+    this.attachShadow({ mode: 'open'});
+}
+
+connectedCallback() {
+        const tooltipIcon = document.createElement('span'); 
+        tooltipIcon.textContent = ' (?)';  
+        this.shadowRoot.appendChild(tooltipIcon); 
+}
+---
+
+with having written it, this DOM has its own shadow, attached to it.
+now if we write appendChild(), we don't append the child to the HTML element, but to the shodow of that HTML element
+so we should have used the 'this.shadowRoot.appendChild();'
+
+
+*** Templates ***
+
+one way to use templates is to write <template> tags in index.html file:
+this element is not rendered automatically.
+----------------------
+<template id="tooltip-template">
+  <span> (?)</span>
+</template>
+----------------------
+
+previously, we used to create the HTML content in our web component in connectedCallback():
+----------------------
+connectedCallback() {
+  const tooltipIcon = document.createElement('span'); 
+  tooltipIcon.textContent = ' (?)';  
+  this.shadowRoot.appendChild(tooltipIcon);
+}
+----------------------
+
+but we want to use our template to the component. so in the constructor of the web component,
+we access the template, and then we copy the content of that template and append that to the child of this web component.
+----------------------
+constructor() {
+  super();
+  this.attachShadow({ mode: 'open'});
+  const template = document.querySelector('#tooltip-template');   // access the template
+  this.shadowRoot.appendChild(template.content.cloneNode(true));  // copy the content of that element.
+}
+----------------------
+
+now instead of :
+---
+connectedCallback() {
+  const tooltipIcon = document.createElement('span'); 
+  tooltipIcon.textContent = ' (?)';  
+  this.shadowRoot.appendChild(tooltipIcon);
+}
+---
+we have:
+---
+connectedCallback() {
+  const tooltipIcon = this.shadowRoot.querySelector('span'); 
+  this.shadowRoot.appendChild(tooltipIcon);
+}
+---
+
+*** slots ***
+
+An alternative to inline HTML templates, we have slots. we can add them to the <template> tags:
+----------------------
+<template id="tooltip-template">
+  <slot></slot><span> (?)</span>
+</template>
+----------------------
+
+it means that, the <slot></slot> is the place for whatever you pass between opening and closing tags.
+and after <slot></slot> is the DOM we want to show (out template).
+'slot' also can have a default value:
+----------------------
+<template id="tooltip-template">
+  <slot>Some Default</slot><span> (?)</span>
+</template>
+----------------------
+
+so if we don't pass anything between the openning and closing custom elements tags, the 
+default value of slots will be show.
+
+but how to definen the Template, inside the javascript code not index.html?
+so instead of accessing and appending the custom template from outside the js file,
+we use 'innerHTML' which is a default property we can set on our HTML elements.
+---
+constructor() {
+    super();
+    this._tooltipContainer;
+    this._tooltipText = "Some Default Texts";
+    this.attachShadow({ mode: 'open'});
+    this.shadowRoot.innerHTML = `
+      <slot>Some Default</slot>
+      <span> (?)</span>
+    `;
+}
+---
+
+with stencil.js , we have a nicer way to build HTML elements in js files.
+here we can also add <style> tags and the style will be only applied to the HTML we created.
+---
+constructor() {
+    super();
+    ...
+    this.shadowRoot.innerHTML = `
+      <style>
+        div {   // this div style won't affect other divs in page.
+          background-color: black;
+          color: white;
+          position: absolute;
+          z-indedx: 10;
+        }
+      </style>
+      <slot>Some Default</slot>
+      <span> (?)</span>
+    `;
+}
+---
+
+*** Extending Build-in Elements ***
+
+we used to create web component by extending the 'HTMLElement'. 
+alternative way is to create web components by basing them on specific built-in components or HTML elements.
+here we extended the 'HTMLAnchorElement' which blongs to <a> tags in index.html
+we want to wrap the <a> tag with our own web component with haaving all the functions that this <a> tag has.
+------------------------------------------------------
+index.html
+-----------------
+<a href="https://www.google.com">Google</a>
+------------------------------------------------------
+confirm-link.js
+-----------------
+class ConfirmLink extends HTMLAnchorElement {
+  connectedCallback() {
+    this.addEventListener('click', event => {
+      if (confirm('Do you really want to leave?')) {
+        event.preventDefault();
+      }
+    })
+  }
+}
+
+// because we extended the 'HTMLAnchorElement' we should insert a third argument to show 
+// what kind of HTML element actually we extended.
+customElements.define('uc-confirm-link', ConfirmLink, {extneds: 'a'});
+------------------------------------------------------
+
+with having that, we can import the component in index.html and use it:
+------------------------------------------------------
+index.html
+-----------------
+<head>
+  <script src="confirm-link.js"></script>
+</head>
+<body>
+  
+  // instead of having simple <a> tag, we use our custom element.
+  // but by extending a built-in element, we don't use custom elements as before, (Not like: <uc-confirm-link></uc-confirm-link>)
+  // instead we use is="" attribiute. and the value is the custome selector.
+  
+  <a is="uc-confirm-link" href="https://www.google.com">Google</a>
+  
+</body>
+------------------------------------------------------
+
+*********************************
+******  IMPORTANT  **************
+*********************************
+
+** the Sloted content is not a part of the shadowDOM!
+whenever we use shadow DOM, and we use <slot>, the content that we want to pass to the 
+shadowDOM is not a part of it, but it's a sibiling of the <slot>. but the browser won't show it
+separatly. the <slot> tag is going to have a pointer that if we click on it, we redirect to the 
+passing content. 
+
+consider:
+-----
+<p>
+  <uc-tooltip text="Web Components is a set of standards.">
+    Web Components
+  </uc-tooltip> 
+  are awsome!
+</p>
+-----
+the 'Web Components' text is not part of the shadowDOM. so we can style that outside the shadowDOM
+(inside the LightDOM): 
+-----
+<head>
+  <style>
+    .highlight{
+      background-color: yellow;
+    }
+  </style>
+</head>
+<body>
+  <p>
+    <uc-tooltip text="Web Components is a set of standards.">
+      <span class="highlight">Web Components</span>
+    </uc-tooltip> 
+    are awsome!
+  </p>
+</body>
+-----
+
+now, if you want to style the content of a slot, in the web component, you should use
+a suddo selector named '::slotted() {}'
+
+this will select all the slotted content if you pass * to it: '::slotted(*) {}'
+but now we want to select all slotted items that has '.highlight' class:  '::slotted('.highlight') {}'.
+** you should select just the slotted item not its chiildren.
+-----
+constructor(){
+  super();
+  this,shadowRoot.innerHTML = `
+  <style>
+    div {
+      ...
+    }
+
+    ::slotted('.highlight') {
+      border-bottom: 1px dotted red;
+    }
+
+  </style>
+  <slot>Some Default</slot>
+  <span> (?)</span>             // if we hover on '(?)' the <slot> will be shown.
+  `
+}
+-----
+
+*** :host Selector ***
+
+if we want to style the whole web component, we can do this from index.html like:
+-----
+<style>
+  div {
+    ...
+  }
+
+  uc-tooltip {
+    ...
+  }
+</style>
+-----
+but we cannot do it the same way inside of the component.
+-----
+constructor(){
+  super();
+  this,shadowRoot.innerHTML = `
+  <style>
+    uc-tooltip {
+      // Won't Work
+    }
+  </style>
+  <slot>Some Default</slot>
+  <span> (?)</span>             // if we hover on '(?)' the <slot> will be shown.
+  `
+}
+-----
+
+but with ":host" selector, we can access the whole component tag!
+-----
+constructor(){
+  super();
+  this,shadowRoot.innerHTML = `
+  <style>
+    :host{
+      background: gray;
+    }
+  </style>
+  <slot>Some Default</slot>
+  <span> (?)</span>             // if we hover on '(?)' the <slot> will be shown.
+  `
+}
+-----
+
+the ':host' selector can take 1 argument, for conditional class.
+-----
+  <style>
+    :host(.important){
+      background: gray;
+    }
+  </style>
+-----
+so the style will be added to the <uc-tooltip> tag, whenever that tag has a class named 'important'.
+
+
+*** :host-context Selector ***
+
+consider when we want to style a component just when it's in a <p>. and if it wasn't
+we don't want that style. so in the first argument, we pass the surrounding element:
+-----
+:host-context(p.hello) {
+  ...
+}
+-----
+so it will affect the web components that are surrounded with a paragraph having a class named 'hello'.
+
+
+*** CSS Variables ***
+
+in index.html ,  we can define our custom css variables like below:
+-----------
+<head>
+  <style>
+    html {
+      --color-primary: gray;
+    }
+  </style>
+</head>
+-----------
+here we used 'html{}' to apply these variables over all of the page.
+so we define these variables with '--' at the beginning of them.
+we can use them in our component with 'var()' keyword.
+-----
+constructor(){
+  super();
+  this,shadowRoot.innerHTML = `
+  <style>
+    :host(.important){
+      background: var(--color-primary);
+    }
+  </style>
+  </style>
+  <slot>Some Default</slot>
+  <span> (?)</span>             // if we hover on '(?)' the <slot> will be shown.
+  `
+}
+-----
+
+here we used the '--color-primary' variable in our custom element.
+these web components are gonna be used in any projects. so maybe they won't have such varriables like '--color-primary'.
+we can set a default value for them with writing a comma:
+------
+<style>
+    :host(.important){
+      background: var(--color-primary, gray);
+    }
+</style>
+------
+
+
+*** attributeChangedCallback() ***
+
+it takes 3 arguments: the name of the attribiute, the old value and the new value:
+we also should specify the attribiute that we're seeking for.
+----------
+class tooltip extneds HTMLElement {
+  constructor(){
+    super();
+  }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    console.log(name, oldValue, newValue);  
+  }
+
+  static get observedAttributes() {   // a getter method that returns just values.
+    return ['text', 'class'];    // return all the attribiute names that we want to listhen to changes.
+  }                              // you should add attribiutes that you really care about.
+}
+----------
+
+so if we change the 'text' attribiute of <uc-tooltip>, the log will be like:
+// text, Web components is a set of standards, Something new
+
+----------
+attributeChangedCallback(name, oldValue, newValue) {
+  if(oldValue === newValue) {
+    return;   // do nothing if nothing has changed.
+  }
+
+  if(name === 'text') {
+    this._tooltipText = newValue;
+  }
+
+}
+----------
+
+
+*** disconnectedCallback() ***
+
+----------------------------------
+disconnectedCallback() {
+  this._tooltipIcon.removeEventListenr('mouseenter', this._showToolTip);
+  this._tooltipIcon.removeEventListenr('mouseleave', this._hideToolTip);
+}
+----------------------------------
+
+
+*** render ***
+
+we can use this optional method, to update the DOM.
+-------------
+class Tooltip extend HTMLElement {
+  constructor(){
+    super();
+    this.tooltipVisible = false;
+  }
+
+  _render() {
+    if(this.tooltipVisible) {
+      this._tooltipContainer = document.createElement('div');
+      this._tooltipContainer.textContent = 'This is the tooltip text!';  
+      this.appendChild(this._tooltipContainer);
+    } else {
+      if(this._tooltipContainer) {
+        this.removeChild(this._tooltipContainer); 
+      }
+    }
+  }
+
+  _showToolTip() {
+    this.tooltipVisible = true;
+    _render();
+  }
+
+  _hideToolTip() {
+    this.tooltipVisible = false;
+    _render();
+  }
+}
+-------------
+ 
+How to read the <slot> data inside the component?
+-------------
+const slots = this.shadowRoot.querySelectorAll('slot');
+slots[1].addEventListener('slotchange', (e) =>
+  console.dir(slots[1].assignedNodes()),
+);
+-------------
+here we took all the <slot> tags and added an eventListener() to the second one.
+we used the 'slotchange' event, that is used for the times that the content of slot is changed.
+'console.dir()' returns an object!
+we called the 'assignedNodes()' method on it, and it returns all the content that are passed to that slot.
+
+
+*** Example ***
+----------------------------------------------------
+index.html
+-----------------
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="x-ua-compatible" content="ie=edge" />
+
+  <title>Web Components</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 2rem;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <uc-modal>
+      // the text 'Please Confirm' is a default slot.
+      <h1 slot="title">Please Confirm</h1> // it should affect the 'title' slot. not the default slot.
+
+      <p>With your confirmation you agree to pay the full amount!</p>
+    </uc-modal>
+
+    <p>Please confirm your choice</p>
+
+    <button>Show Details & Confirm</button>
+  </main>
+
+  <script type="module">
+    import '/modal.js';
+
+    const modal = document.querySelector('uc-modal');
+
+    modal.addEventListener('confirm', () => console.log('Confirmed...'));
+    modal.addEventListener('cancel', () => console.log('Cancelled...'));
+
+    // if the button clicked, we open the modal and make it visible
+    const confirmButton = document.querySelector('button');
+    confirmButton.addEventListener('click', () => {
+      // modal.setAttribute('opened', '')   // the attribute we want to watch is 'opened'.
+      if (!modal.isOpen) modal.open();    // here we called the 'open()' method from 'modal' component.
+    });
+  </script>
+</body>
+
+</html>
+----------------------------------------------------
+
+modal.js
+-----------------
+class Modal extends HTMLElement {
+  isOpen = false;
+
+  constructor() {
+    super();
+
+    // we can always take the advantages of ShadowDOM with writing the line below.
+    this.attachShadow({ mode: 'open' });
+    // here we write our template using 'shadowRoot' that is hidden away from the light DOM.
+    this.shadowRoot.innerHTML = `
+      <style>
+        // here we select the whole component, when the 'opened' attribute is available.
+        // and if the condition was true, we want to change the '#backdrop' and 'modal' of it.
+        :host([opened]) #backdrop,
+        :host([opened]) #modal {
+          opacity: 1;
+          pointer-events: all;
+        }
+
+        :host([opened]) #modal {
+          top: 15vh;
+        }
+
+        #backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, .75);
+          z-index: 1;
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        #modal {
+          position: fixed;
+          top: 10vh;
+          left: 25vw;
+          width: 50vw;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          background-color: #fff;
+          border-radius: 3px;
+          box-shadow: 0 2px 8px rgb(0, 0, 0, .26);
+          z-index: 2;
+          opacity: 0;
+          pointer-events: none;   // disable to any clicks on the background
+          transition: all 0.3s ease-out;
+        }
+
+        header {
+          padding: 1rem;
+          border-bottom: 1px solid #ccc;
+        }
+
+        ::slotted(h1) {
+          margin: 0;
+          font-size: 1.2rem;
+        }
+
+        #main {
+          padding: 1rem;
+        }
+
+        #actions {
+          display: flex;
+          justify-content: flex-end;
+          padding: 1rem;
+          border-top: 1px solid #ccc;
+        }
+
+        button {
+          margin: 0 .35rem;
+        }
+      </style>
+
+      <div id="backdrop"></div>
+
+      <div id="modal">
+        <header>
+          <slot name="title">Please Confirm Payment</slot>      // the slot has a name 'title' to be distinguished between the other slots
+        </header>
+
+        <section id="main">
+          <slot></slot>   // here we pass contents to the component and they will be shown here.
+        </section>        // the slot here, doesn't have any name, so any passing content which dosen't have a target specifc name, will go here.
+
+        <section id="actions">
+          <button id="cancel-btn">Cancel</button>
+          <button id="confirm-btn">Okay</button>
+        </section>
+      </div>
+    `;
+
+    // here we took all the <slot> tags and added an eventListener() to the second one.
+    // we used the 'slotchange' event, that is used for the times that the content of slot is changed.
+    // 'console.dir()' returns an object!
+    // we called the 'assignedNodes()' method on it, and it returns all the content that are passed to that slot.
+    const slots = this.shadowRoot.querySelectorAll('slot');
+    slots[1].addEventListener('slotchange', (e) =>
+      console.dir(slots[1].assignedNodes()),
+    );
+
+    const cancelBtn = this.shadowRoot.querySelector('#cancel-btn');
+    const confirmBtn = this.shadowRoot.querySelector('#confirm-btn');
+
+    cancelBtn.addEventListener('click', this._cancel.bind(this));
+    confirmBtn.addEventListener('click', this._confirm.bind(this));
+
+    cancelBtn.addEventListener('cancel', () =>
+      console.log('Cancel inside the component'),
+    );
+
+    const backdrop = this.shadowRoot.querySelector('#backdrop');
+
+    backdrop.addEventListener('click', this._cancel.bind(this));
+  }
+
+  // we listen to the attribute to change the classes or state
+  attributeChangedCallback(name, prev, next) {
+    if (name === 'opened') {
+      if (this.hasAttribute('opened'))
+        //  this.shadowRoot.querySelector('#backdrop').style.opacity = 1;
+        //  this.shadowRoot.querySelector('#backdrop').style.pointerEvents = 'all';
+        //  this.shadowRoot.querySelector('#modal').style.opacity = 1;
+        //  this.shadowRoot.querySelector('#modal').style.pointerEvents = 'all';
+        this.isOpen = true;
+    } else {
+      this.isOpen = false;
+    }
+  }
+
+  static get observedAttributes() {
+    // return the attributes we want to watch
+    return ['opened'];
+  }
+
+  open() {
+    this.setAttribute('opened', '');
+    this.isOpen = true;
+  }
+
+  hide() {
+    if (this.hasAttribute('opened')) this.removeAttribute('opened');
+    this.isOpen = false;
+  }
+
+  _cancel(event) {
+    this.hide();  // close the modal
+
+    // here we created a new event and passed it 
+    // 'bubbles' define whether this event should bubble up or not. default is false
+    // set 'composed' to 'true', then this event may leave the shadow DOM. default is false
+    // set 'composed' to 'false', then the event must not leave our shadow DOM. so it will bubble up, but inside our shadow DOM tree.
+    const cancelEvent = new Event('cancel', { bubbles: true, composed: true });
+    event.target.dispatchEvent(cancelEvent);  
+  }
+
+  _confirm() {
+    this.hide();  // close the modal
+
+    const confirmEvent = new Event('confirm');
+    this.dispatchEvent(confirmEvent);
+  }
+}
+
+customElements.define('uc-modal', Modal);
+
+----------------------------------------------------
+
+*** Stencil.js ***
+
+How can we deploy our web compnents to other projects?
+you just need to improt the web component in React or other frameworks file and then use them like a tag. like: <uc-tooltip>
+
+to make a project based on stencil, you need to run: $ npm init stencil
+and then choose 'component'
+
+What is Stencil?
+- A compiler for native web components. so it will give us native javascript web components at the end.
+- it has a nicer syntax with Js and TS
+
+in Stencil classes, we won't extend anything like HTMLElement. Stencil will do this for us.
+------------------------------------------------
+side-drawer.tsx
+---------------
+// import Component definition file from the '@stencil/core'.
+import { Component, h } from '@stencil/core';
+
+// this decorator tells Stencil that this class should convert to a component.
+@Component({
+    tag: 'uc-side-drawer' // here we define the web component tag.
+})    // pass configuration to the decorator
+export class SideDrawer {
+
+    // the render method is obligatory
+    render() {
+        return (
+            <div>
+                <h1>The Side Drawer</h1>
+            </div>
+        );
+    }
+}
+------------------------------------------------
+
+**********************************************
+*** Basic Side Bar Project with Stencil.js ***
+**********************************************
+
+------------------------------------------------
+index.html:
+------------------
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0" />
+  <title>Stencil Component Starter</title>
+
+  <script type="module" src="/build/first.esm.js"></script>
+  <script nomodule src="/build/first.js"></script>
+  <script sre=""></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+
+    .side-nav ul {
+      list-style: none;
+    }
+
+    .side-nav li {
+      margin: 1rem;
+    }
+
+    .side-nav a {
+      text-decoration: none;
+      color: rgb(162, 105, 0);
+    }
+  </style>
+</head>
+
+<body>
+  <button id="side-drawer-btn">Open Side
+    Menu</button>
+  <!-- <my-component first="Stencil" last="'Don't call me a framework' JS"></my-component> -->
+  <uc-side-drawer title="Main Menu">
+    <nav class="side-nav">
+      <ul>
+        <li><a href="/">A Link</a></li>
+        <li><a href="/">Another Link</a></li>
+        <li><a href="/">A third Link</a></li>
+      </ul>
+    </nav>
+  </uc-side-drawer>
+  <script>
+    const sideDrawerButton = document.querySelector('#side-drawer-btn');
+    const sideDrawer = document.querySelector('uc-side-drawer');
+
+    sideDrawerButton.addEventListener('click', () => {
+      if (!sideDrawer.opened) {
+        console.log('Openning Side Bar');
+        // sideDrawer.opened = true;
+        sideDrawer.open();
+      } else {
+        console.log('Closing Side Bar');
+        // sideDrawer.opened = false;
+        sideDrawer.open();
+
+      }
+    })
+
+    setTimeout(() => {
+      sideDrawer.title = 'It Changed!'
+    }, 3000);
+
+  </script>
+</body>
+
+</html>
+------------------------------------------------
+side-drawer.tsx
+---------------
+// import Component definition file from the '@stencil/core'.
+import { Component, h, Method, Prop, State } from '@stencil/core';
+
+// this decorator tells Stencil that this class should convert to a component.
+@Component({
+    tag: 'uc-side-drawer', // here we define the web component tag.
+    styleUrl: './side-drawer.css', // is the path to css file
+    // scoped: true,  // allows us to tell stencil that all the styles it find in the external stlyesheet should be scoped to this comopnent only!
+    shadow: true // we can set shadow to 'true' to use the native shadowDOM 
+    // Components cannot be "scoped" and "shadow" at the same time
+}
+
+) // pass configuration to the decorator
+
+export class SideDrawer {
+    // we can use 'mutable: true' in @Prop to be able to change values of properties from outside of the component.
+    // but a better way is to use @State() to change values inside of the component.
+    // here we define the name if the State as 'showContactInfo'
+    // so it won't watch for changes from outside, but it looks for changes from inside.
+    @State() showContactInfo: boolean = false;
+
+    // with the help of @Prop decorator, Stencil now watch for attribiutes named 'title' on our cpmponent,
+    // and if we set or change such an attribiute, then Stencil will detect this change and will automatically rerun the render method,
+    // it won't render the entire DOM, but the only parts of the DOM that are changed.
+    // so @Prop() will add an automatic watcher.
+    // we used 'reflect' property to make it possible to change the actual value of title in the DOM.
+    // @Prop() is one way of passing data, the other way is <slot />
+    @Prop({ reflect: true }) title: string;
+
+    @Prop({ reflect: true, mutable: true }) opened: boolean;
+
+    ***************************************************
+    // Note: we can not change the value of @Prop() from inside of the component. But we can change them from outside the component.
+    // if you want to change their value from inside, you set 'mutable: true'
+    ***************************************************
+
+    onCloseDrawer() {
+        this.opened = false;
+    }
+
+    onContentChange(content: string) {
+        this.showContactInfo = (content === 'contact'); // if it was true, the 'true' assigns to 'showContactInfo'
+        // you don't need to write somthing like 'setState()' to change the state. Stencil will automatically do that.
+    }
+
+    @Method()   // this allows us to define methods that can be called from outside of this component.
+    open() {
+        this.opened = true;
+    }
+
+    // the render method is obligatory
+    render() {
+        // one way of conditional rendering:
+
+        // let content = null;
+        // if (this.open) {
+        //     content = (
+        //         <aside>
+        //             <header><h1>{this.title}</h1></header>
+        //             <main>
+        //                 <slot />
+        //             </main>
+        //         </aside>
+        //     )
+        // }
+        // return content;
+
+        // the other way of conditional rendering for openning and closing the side-drawer,
+        // is to use :host([opened]) in just CSS file
+        let mainContent = <slot />;
+        if (this.showContactInfo) {
+            mainContent = (
+                <div id="contact-information">
+                    <h2>Contact Information</h2>
+                    <p>You can reach us via phone or email</p>
+                    <ul>
+                        <li>Phone: 48132142318</li>
+                        <li>Email:
+                            <a href="mailto:somthing@something.com">somthing@something.com</a>
+                        </li>
+                    </ul>
+                </div>
+            )
+        }
+
+        return [
+            <div class="backdrop" onClick={this.onCloseDrawer.bind(this)} />
+            ,
+            <aside>
+                <header>
+                    <h1>{this.title}</h1>
+                    <button onClick={this.onCloseDrawer.bind(this)}>X</button>
+                </header>
+                <section id="tabs">
+                    <button class={!this.showContactInfo ? 'active' : ''} onClick={this.onContentChange.bind(this, 'nav')}>Navigation</button>
+                    <button class={this.showContactInfo ? 'active' : ''} onClick={this.onContentChange.bind(this, 'contact')}>Contact</button>
+                </section>
+                <main>
+                    {mainContent}
+                </main>
+            </aside>
+        ];
+    }
+}
+------------------------------------------------
+
+Note: whenever we want to use a web component in another web component, there is no need to 
+import that web component. because all web components are available globally and are just like HTML tags.
+
+-----------
+Stencil.config
+-----------
+import { Config } from '@stencil/core';
+
+export const config: Config = {
+  namespace: 'second',    // 
+  outputTargets: [
+    {
+      type: 'dist',
+      esmLoaderPath: '../loader',
+    },
+    {
+      type: 'dist-custom-elements-bundle',
+    },
+    {
+      type: 'docs-readme',
+    },
+    {
+      type: 'www',
+      serviceWorker: null, // disable service workers
+    },
+  ],
+};
+
+-----------
+
+*** Using Web Components In React App ***
+
+import { defineCustomElements } from 'uc-components/dist/loader';
+
+ReactDOM.render(<App />, document.getElementById('root'));
+
+serviceWorker.unregister();
+defineCustomElements(window);
+
+-----------------------------------------------------------
+
+Another Project:
+-----------------------------------------------------------
+index.html
+----------------
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0" />
+  <title>Stencil Component Starter</title>
+
+  <script type="module" src="/build/second.esm.js"></script>
+  <script nomodule src="/build/second.js"></script>
+</head>
+
+<body>
+  <!-- <my-component first="Stencil" last="'Don't call me a framework' JS"></my-component> -->
+  <uc-stock-price stock-symbol="AAPL"></uc-stock-price>
+  <uc-stock-finder></uc-stock-finder>
+
+  <!-- <script>
+    const stockFinderEl = document.querySelector('uc-stock-finder');
+    stockFinderEl.addEventListener('ucSymbolSelected', event => {
+      console.log(event);
+    });
+  </script> -->
+</body>
+
+</html>
+-----------------------------------------------------------
+stock-prrice.tsx
+----------------
+import { Component, h, State, Element, Prop, Watch, Listen } from "@stencil/core";
+
+import { AV_APU_KEY } from '../global/global';
+
+@Component({
+    tag: 'uc-stock-price',
+    styleUrl: './stock-price.css',
+    shadow: true
+})
+export class StockPrice {
+
+    // 'this.querySelector' is not available for slecting DOM in Stencil.js file!
+    // in order to access the whole element in CSS, we used ':host', but in TypeScript class, we use @Element decorator.
+    // the '@Element()' will hold a reference to our web-component.
+    // the type will be HTMLElement because the 'el' represents our web component.
+    @Element() el: HTMLElement;
+
+    // there is another way to access a tag, and that is using references: 'ref={}'
+    // here we define a normal property with type of 'HTMLInputElement'.
+    // and then, we assign 'ref={el => this.stockInput = el}' to any element we want to select and have access to.
+    stockInput: HTMLInputElement;
+
+    // initialStockSymbol: string;
+
+    @State() fetchPrice: number;
+
+    // the third way is to store the value of the user enters in a property which we update every keystroke,
+    // which can be helpful for live validation the user input.
+    @State() stockUserInput: string;
+    @State() stockInputValid: boolean = false;
+    @State() error: string;
+
+    // we make our component capable of accepting stock symbols from outside of this component.
+    @Prop({ mutable: true, reflect: true }) stockSymbol: string;
+
+    // the '@Watch' decorator, watchs to changes to our props and then react to them.
+    // the '@Watch' decorator takes a prop name as argument. here it should be the 'stockSymbol' that we took with '@Prop' above
+    // the 'stockSymbolChanged' method will be run, whenever the 'stockSymbol' property gets new value.
+    @Watch('stockSymbol')
+    stockSymbolChanged(newValue: string, oldValue: string) {
+        if (newValue !== oldValue) {
+            this.stockUserInput = newValue;
+            this.stockInputValid = true;
+            this.fetchStockPrice(newValue);
+        }
+    }
+
+    onUserInput(event: Event) {
+        this.stockUserInput = (event.target as HTMLInputElement).value;
+        // check if the input is empty.
+        if (this.stockUserInput.trim() !== '') {
+            this.stockInputValid = true;
+        } else {
+            this.stockInputValid = false;
+        }
+    }
+
+    onFetchStockPrice(event) {
+        event.preventDefault();
+        // with the help of 'el' as our webcomponent, we can select any DOM of it.
+        // in order to fetch the input value, we should wrap the selected <input> and define it as a HTMLInputElement 
+        // because we defined this component as a ShadowDOM, we should access the 'shadowRoot' first to select an element.
+        // if we used 'scoped: true' we didn't have to use shadowRoot.
+        // -> const stockSymbol = (this.el.shadowRoot.querySelector('#stock-symbol') as HTMLInputElement).value;
+
+        // access the input value using ref:    // here TypeScript doesn't have problem with getting the value, because we already defined the ref as 'HTMLInputElement'.
+        // -> const stockSymbol = this.stockInput.value;
+        // -> this.fetchStockPrice(stockSymbol);
+
+        this.stockSymbol = this.stockInput.value;
+    }
+
+
+    // this lifecycle runs before the componentDidLoad(), so the stencil will execute the code in this method, right before the component is about to load.
+    // if we change the State, here, the state will be changed before the render() method gets called.
+    // if we change the State in 'componentDidLoad()', it is after the render() method, so the render() method should get called twice.
+    // 'componentWillLoad' have access to the DOM info before the actual DOM gets rendered. so here is best place for first initilization.
+    componentWillLoad() {
+        // this.fetchPrice = 0;
+        console.log('componentWillLoad');
+        console.log(this.stockSymbol);
+
+
+    }
+
+    // this is a lifeCycle hook, and gets called when the component is first created in the DOM
+    // the 'componentDidLoad()' hook is for when the component is loaded and added to the DOM.
+    // now it accepts an initlial StockSymbol, passing from outside:
+    // <uc-stock-price stock-symbol="AAPL"></uc-stock-price>    the 'stock-symbol' will automatically be changed to stockSymbol by Stencil.js
+    // 'componentDidLoad()' is a good place for calling Async requests to get data for first time. 
+    componentDidLoad() {
+        if (this.stockSymbol) {
+            // this.initialStockSymbol = this.stockSymbol;
+            this.stockUserInput = this.stockSymbol;
+            this.stockInputValid = true;
+            this.fetchStockPrice(this.stockSymbol);
+        }
+    }
+
+    // 'componentWillUpdate' will fire right before the the component re-render because of changinng some props or state.
+    componentWillUpdate() { }
+
+
+    // 'componentDidUpdate' will fire right after the the component re-render because of changinng some props or state.
+    componentDidUpdate() {
+        // one way of watching changes is checking the differences by ourselves:
+        // if (this.stockSymbol !== this.initialStockSymbol) {
+        //     this.initialStockSymbol = this.stockSymbol;
+        //     this.fetchStockPrice(this.stockSymbol);
+        // }
+    }
+
+    // The "componentDidUnload()" method was removed in Stencil 2.
+    // 'disconnectedCallback' is for when the component is about to be removed. A gtrat place for clean-up
+    disconnectedCallback() {
+
+    }
+
+    // the '@Listen()' decorartor allows us to listen to any events emitted.
+    // so you should pass the event name to it, in this case is 'ucSymbolSelected'
+    // the 'body:' tells the Stencil that you should listen to this event, globally! because it can be found in the <body> tree
+    @Listen('body:ucSymbolSelected')
+    onStockSymbolSelected(event: CustomEvent) {
+        console.log('stock symbol selected: ' + event.detail);
+        if (event.detail && event.detail !== this.stockSymbol) {
+            this.stockSymbol = event.detail;
+        }
+    }
+
+    fetchStockPrice(stockSymbol: string) {
+        fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stockSymbol}&apikey=${AV_APU_KEY}`)
+            .then(res => {
+                if (res.status !== 200) {
+                    throw new Error("Invalid!");
+                }
+                return res.json()
+            })
+            .then(parsedRes => {
+                if (!parsedRes['Global Quote']['05. price']) {
+                    throw new Error("Invalid Symbol");
+                }
+                this.error = null;
+                this.fetchPrice = +parsedRes['Global Quote']['05. price']
+            })
+            .catch(err => {
+                this.error = err.message;
+                this.fetchPrice = null;
+            });
+    }
+
+    // this is a stencil method. here we return an object with some metadata about our host element (custom element -> the tag itself).
+    hostData() {
+        // returns a 'class' key. this class will be set on out custom element.
+        // if the error exists, the 'error' class will be added to the web component tag.
+        return { class: this.error ? 'error' : '' };
+    }
+
+    render() {
+        let dataContent = <p>Please enter a symbol!</p>;
+        if (this.error) {
+            dataContent = <p>{this.error}</p>
+        }
+        if (this.fetchPrice) {
+            dataContent = <p>Price: ${this.fetchPrice}</p>
+        }
+        return [
+            <form onSubmit={this.onFetchStockPrice.bind(this)}>
+                <input id="stock-symbol"
+                    ref={el => this.stockInput = el}
+                    value={this.stockUserInput}
+                    onInput={this.onUserInput.bind(this)}   // now anytime we input texts in field, it always stores in the 'stockUserInput'
+                />
+                {/* we used 'disabled' to check if the field is not empty */}
+                <button type="submit" disabled={!this.stockInputValid}>Fetch</button>
+            </form>
+            ,
+            <div>
+                {dataContent}
+            </div>
+        ];
+    }
+}
+-----------------------------------------------------------
+stock-finder.tsx
+----------------
+import { Component, h, State, Event, EventEmitter } from "@stencil/core";
+
+import { AV_APU_KEY } from "../global/global";
+
+@Component({
+    tag: 'uc-stock-finder',
+    styleUrl: './stock-finder.css',
+    shadow: true
+})
+export class StockFinder {
+    stockNameInput: HTMLInputElement;   // define it to be a reference
+
+    @State() searchResults: { symbol: string, name: string }[] = []; // an array of objects. it's an empty array at the beggining
+
+    // the '@Event' and 'EventEmitter' both imported from @stencil/core
+    // EventEmitter is a generic type which means we can pass extra information with this type definition 
+    // and tell TypeScript which type of data will eventually be emitted with this event emitter.
+    // here the passing type is string
+    // 'bubbles' define whether this event should bubble up or not. default is false
+    // set 'composed' to 'true', then this event may leave the shadow DOM. default is false
+    // set 'composed' to 'false', then the event must not leave our shadow DOM. so it will bubble up, but inside our shadow DOM tree.
+    @Event({ bubbles: true, composed: true }) ucSymbolSelected: EventEmitter<string>;
+
+    onFindStocks(event: Event) {
+        event.preventDefault();
+        const stockName = this.stockNameInput.value;
+        fetch(`https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${stockName}&apikey=${AV_APU_KEY}`)
+            .then(res => res.json())
+            .then(parsedRes => {
+                console.log(parsedRes);
+
+                this.searchResults = parsedRes['bestMatches'].map(match => {
+                    return { name: match['2. name'], symbol: match['1. symbol'] }
+                });
+                console.log(this.searchResults);
+
+            })
+            .catch(err => {
+                console.log(err);
+
+            })
+    }
+
+    // writing our custom event. with this event here, we 
+    onSelectSymbol(symbol: string) {
+        this.ucSymbolSelected.emit(symbol);
+    }
+
+    render() {
+        return [
+            <form onSubmit={this.onFindStocks.bind(this)}>
+                <input id="stock-symbol"
+                    ref={el => this.stockNameInput = el}
+                />
+                <button type="submit">Find!</button>
+            </form>,
+            <ul>
+                {this.searchResults.map(result => {
+                    return <li onClick={this.onSelectSymbol.bind(this, result.symbol)}><strong>{result.symbol}</strong> - {result.name}</li>
+                })}
+            </ul>
+        ];
+    }
+}
+-----------------------------------------------------------
+
+Key Features:
+
+Component({
+  tag: 'f-dialog',
+  styleUrls: ["dialog.scss"],
+  shadow: true
+  // OR
+  shadow: { delegatesFocus: true}
+})
+<slot name="title">Please Confirm Payment</slot>      // the slot has a name 'title' to be distinguished between the other slots
+<slot></slot> // the slot here, doesn't have any name, so any passing content which dosen't have a target specifc name, will go here.
+@Element
+@Watch
+@Prop
+@State
+@Method()   // this allows us to define methods that can be called from outside of this component.
+@Listen('body:ucSymbolSelected')
+@Event
+EventEmitter<string>
+componentWillLoad()
+componentDidLoad()
+componentWillUpdate()
+componentDidUpdate()
+disconnectedCallback()

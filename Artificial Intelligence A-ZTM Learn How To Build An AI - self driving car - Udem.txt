@@ -1,0 +1,584 @@
+Self_Driving_Car project:
+---
+in this file, there is 'ai.py' file as the brain of our car and
+its artificial intelligence is based on Neural Network.
+the 'car.kv' file that contains the object we want to have in our map.
+like:
+----------------------------------
+<Car>:
+    size: 20, 10
+    canvas:
+        PushMatrix
+        Rotate:
+            angle: self.angle
+            origin: self.center
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        PopMatrix
+----------------------------------
+objects are 'Car' and 'Ball1', 'Ball2', 'Ball3' as sensor of the car
+which help the car to detect if there is an obsticle around the car
+and 'Game' object that connects all objects together to make the car.
+so if the car moves, the sensors should also be moved.
+
+'map.py' file, is where we make the whole map.
+
+imagine we want to teach a car to drive itself. we won't let it
+crash the wall to teach it sth. Instead, we use fields of sand
+and we use punishment system. so if the car, got into the sand,
+its speed decreases and it can declare it as negative reward.
+------------------------------------------------------------------
+map.py
+----------------------------------
+# Self Driving Car
+
+# Importing the libraries - libraries are essential
+import numpy as np  # it's a library for working with arrays
+from random import random, randint
+import matplotlib.pyplot as plt
+import time
+
+# Importing the Kivy packages - it is used to draw the map.
+from kivy.app import App
+from kivy.uix.widget import Widget
+from kivy.uix.button import Button
+from kivy.graphics import Color, Ellipse, Line
+from kivy.config import Config
+from kivy.properties import NumericProperty, ReferenceListProperty, ObjectProperty
+from kivy.vector import Vector
+from kivy.clock import Clock
+
+# Importing the Dqn object from our AI in ai.py
+from ai import Dqn
+
+# Adding this line if we don't want the right click to put a red point
+Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
+
+# Introducing last_x and last_y, used to keep the last point in memory when we draw the sand on the map
+last_x = 0
+last_y = 0
+n_points = 0
+length = 0
+
+# Getting our AI, which we call "brain", and that contains our neural network that represents our Q-function
+# creating brain object from Dqn class. '5' is state, '3' is number of possible actions, up,right,left
+# '0.9' is gamma
+brain = Dqn(5, 3, 0.9)
+# define an array for actions: first one means go straight and don't rotate.
+# second is rotating 20 degree to the right
+# third is rotating 20 degree to the left (-20)
+action2rotation = [0, 20, -20]
+# the initial reward is 0, but if it goes to sand, it will be negative,
+# if it doesn't go to sand, the reward will be positive.
+last_reward = 0
+# scores is the vector that contains the rewards (but not all of them).
+# it is helpful to make a curve of rewards based on time.
+scores = []
+
+# Initializing the map
+first_update = True
+
+
+def init():
+    # it's going to be an array in which the cells will be the pixels of the map.
+    # and each cell will be 1 if there is sand, and 0 if there is no sand.
+    global sand
+    # the 'goal' is the point in the map which will train the car to reach.
+    # it's like a destination. (in this case, upper left corner of the map
+    # and once it reaches there, we will train it to go to bottom right corner of the map.)
+    global goal_x
+    global goal_y
+    global first_update
+    sand = np.zeros((longueur, largeur))  # we initialize sand with 0
+    # the coordinate of (0, 0) is button-left
+    # goal_x === 20 and goal_y === largeur - 20 means the upper-left of the square screen.
+    # like (20px, largeur - 20px) <-> we brought 20 here because we don't want the car to crash the wall.
+    goal_x = 20
+    goal_y = largeur - 20
+    first_update = False
+
+
+# Initializing the last distance - it means the current distance from the car to the goal.
+last_distance = 0
+
+# Creating the car class
+
+
+class Car(Widget):
+
+    # the angle between x axis and the axis of the direction of the car.
+    angle = NumericProperty(0)
+    # it might be 0, 20 or -20 degree.
+    rotation = NumericProperty(0)
+    # x and y coordinate of velocity vector, velocity === speed
+    velocity_x = NumericProperty(0)
+    velocity_y = NumericProperty(0)
+    velocity = ReferenceListProperty(velocity_x, velocity_y)
+    # car has 3 sensors.
+    # sensor1 will detect if there is any sand in front of the car.
+    # sensor2 will detect if there is any sand at the left of the car.
+    # sensor3 will detect if there is any sand at the right of the car.
+    sensor1_x = NumericProperty(0)
+    sensor1_y = NumericProperty(0)
+    sensor1 = ReferenceListProperty(sensor1_x, sensor1_y)
+    sensor2_x = NumericProperty(0)
+    sensor2_y = NumericProperty(0)
+    sensor2 = ReferenceListProperty(sensor2_x, sensor2_y)
+    sensor3_x = NumericProperty(0)
+    sensor3_y = NumericProperty(0)
+    sensor3 = ReferenceListProperty(sensor3_x, sensor3_y)
+    # we have 3 signals.
+    # signal1 is the signal received by sensor1. signal1 is the density of sand around sensor one
+    # signal2 is the signal received by sensor2. signal2 is the density of sand around sensor two
+    # signal3 is the signal received by sensor3. signal3 is the density of sand around sensor three
+    # we take some big squares of 20px by 20px around each of the sensors
+    # we devide the number of sands in the square by the total number of cells in the square (20 * 20 = 400)
+    # and the result will be the density of sands.
+    signal1 = NumericProperty(0)
+    signal2 = NumericProperty(0)
+    signal3 = NumericProperty(0)
+
+    # it let the car to go straight or left or right.
+    def move(self, rotation):
+        # the pos will be the updated position of the car.
+        # the summation of last position and velocity vector in the direction of velocity vector.
+        self.pos = Vector(*self.velocity) + self.pos
+        # when we select the action, the rotation will be happen => action2rotation[action]
+        self.rotation = rotation
+        # rotation will be added to previous angle
+        self.angle = self.angle + self.rotation
+        # once the car has moved, we should update sensors and signals
+        # 30 -> is the distance between the car and the sensor
+        self.sensor1 = Vector(30, 0).rotate(self.angle) + self.pos
+        self.sensor2 = Vector(30, 0).rotate((self.angle + 30) % 360) + self.pos
+        self.sensor3 = Vector(30, 0).rotate((self.angle - 30) % 360) + self.pos
+        # we take all the cells for both x and y vectors between -10 to 10
+        # therefore we get a square of 20*20 pixels, surrounding the sensor. so we
+        self.signal1 = int(
+            np.sum(sand[int(self.sensor1_x) - 10:int(self.sensor1_x) + 10,
+                        int(self.sensor1_y) - 10:int(self.sensor1_y) +
+                        10])) / 400.
+        self.signal2 = int(
+            np.sum(sand[int(self.sensor2_x) - 10:int(self.sensor2_x) + 10,
+                        int(self.sensor2_y) - 10:int(self.sensor2_y) +
+                        10])) / 400.
+        self.signal3 = int(
+            np.sum(sand[int(self.sensor3_x) - 10:int(self.sensor3_x) + 10,
+                        int(self.sensor3_y) - 10:int(self.sensor3_y) +
+                        10])) / 400.
+        # another bad reward we want to give to the car when it is reaching one of the edges (walls) of the map
+        # so it should always have a space of 10px from the wall. if not, we assign its signal to 1. it means full of sand.
+        # (it's the worst reward it can get)
+        if self.sensor1_x > longueur - 10 or self.sensor1_x < 10 or self.sensor1_y > largeur - 10 or self.sensor1_y < 10:
+            self.signal1 = 1.
+        if self.sensor2_x > longueur - 10 or self.sensor2_x < 10 or self.sensor2_y > largeur - 10 or self.sensor2_y < 10:
+            self.signal2 = 1.
+        if self.sensor3_x > longueur - 10 or self.sensor3_x < 10 or self.sensor3_y > largeur - 10 or self.sensor3_y < 10:
+            self.signal3 = 1.
+
+
+class Ball1(Widget):
+    pass
+
+
+class Ball2(Widget):
+    pass
+
+
+class Ball3(Widget):
+    pass
+
+
+# Creating the game class
+
+
+class Game(Widget):
+
+    car = ObjectProperty(None)
+    ball1 = ObjectProperty(None)
+    ball2 = ObjectProperty(None)
+    ball3 = ObjectProperty(None)
+
+    def serve_car(self):
+        self.car.center = self.center
+        self.car.velocity = Vector(6, 0)
+
+    # here is the function that selects the action to do at each time.
+    # this action will be in our Neural Network
+    def update(self, dt):
+
+        global brain
+        global last_reward
+        global scores
+        global last_distance
+        global goal_x
+        global goal_y
+        global longueur
+        global largeur
+
+        longueur = self.width
+        largeur = self.height
+        if first_update:
+            init()
+
+        xx = goal_x - self.car.x
+        yy = goal_y - self.car.y
+        # if the car goes towards the goal, the orientation will be 0
+        # if the car goes to the right, the orientation will be close to 45 degree
+        # if the car goes to the left, the orientation will be close to -45 degree
+        # by adding these 2 orientations , we make sure that the AI explores in both left or right direction.
+        # because by default, AI always doesn't explore the same direction.
+        orientation = Vector(*self.car.velocity).angle((xx, yy)) / 180.
+        # these 5 inputs are going to Neural Network
+        last_signal = [
+            self.car.signal1, self.car.signal2, self.car.signal3, orientation,
+            -orientation
+        ]
+        # update() gets last reward and the last signal of three sensors.
+        # the output from Neural Network will be action
+        action = brain.update(last_reward, last_signal)
+
+        # update these properties: scores, rotation, distance and position. and rotate the car.
+        scores.append(brain.score())
+        rotation = action2rotation[action]
+        self.car.move(rotation)
+        distance = np.sqrt((self.car.x - goal_x)**2 + (self.car.y - goal_y)**2)
+        self.ball1.pos = self.car.sensor1
+        self.ball2.pos = self.car.sensor2
+        self.ball3.pos = self.car.sensor3
+
+        # here we penalize the car to sands
+        # if it goes to sand, it slows down (decrease from 6 to 0) and besides, it gets bad reward.
+        if sand[int(self.car.x), int(self.car.y)] > 0:
+            self.car.velocity = Vector(1, 0).rotate(self.car.angle)
+            last_reward = -10000
+        # otherwise it goes with its normal speed (6), and if it gets closer to the goal, it gets reward of 0.1
+        # if it gets further, gets -0.2 reward.
+        else:
+            self.car.velocity = Vector(6, 0).rotate(self.car.angle)
+            last_reward = -0.02
+            if distance < last_distance:
+                last_reward = 0.1
+
+        # if the car gets too close to one of the edges(walls)
+        # left edge of the map
+        if self.car.x < 10:
+            self.car.x = 10
+            last_reward = -1
+        # right edge of the map
+        if self.car.x > self.width - 10:
+            self.car.x = self.width - 10
+            last_reward = -1
+        # bottom edge of the map
+        if self.car.y < 10:
+            self.car.y = 10
+            last_reward = -1
+        # up edge of the map
+        if self.car.y > self.height - 10:
+            self.car.y = self.height - 10
+            last_reward = -1
+
+        # update the goal when the goal is reached. and update the distance of the car from goal
+        if distance < 100:
+            goal_x = self.width - goal_x
+            goal_y = self.height - goal_y
+        last_distance = distance
+
+
+# Adding the painting tools
+class MyPaintWidget(Widget):
+    def on_touch_down(self, touch):
+        global length, n_points, last_x, last_y
+        with self.canvas:
+            Color(0.8, 0.7, 0)
+            d = 10.
+            touch.ud['line'] = Line(points=(touch.x, touch.y), width=10)
+            last_x = int(touch.x)
+            last_y = int(touch.y)
+            n_points = 0
+            length = 0
+            sand[int(touch.x), int(touch.y)] = 1
+
+    def on_touch_move(self, touch):
+        global length, n_points, last_x, last_y
+        if touch.button == 'left':
+            touch.ud['line'].points += [touch.x, touch.y]
+            x = int(touch.x)
+            y = int(touch.y)
+            length += np.sqrt(max((x - last_x)**2 + (y - last_y)**2, 2))
+            n_points += 1.
+            density = n_points / (length)
+            touch.ud['line'].width = int(20 * density + 1)
+            sand[int(touch.x) - 10:int(touch.x) + 10,
+                 int(touch.y) - 10:int(touch.y) + 10] = 1
+            last_x = x
+            last_y = y
+
+
+# Adding the API Buttons (clear, save and load)
+
+
+class CarApp(App):
+    def build(self):
+        parent = Game()
+        parent.serve_car()
+        Clock.schedule_interval(parent.update, 1.0 / 60.0)
+        self.painter = MyPaintWidget()
+        clearbtn = Button(text='clear')
+        savebtn = Button(text='save', pos=(parent.width, 0))
+        loadbtn = Button(text='load', pos=(2 * parent.width, 0))
+        clearbtn.bind(on_release=self.clear_canvas)
+        savebtn.bind(on_release=self.save)
+        loadbtn.bind(on_release=self.load)
+        parent.add_widget(self.painter)
+        parent.add_widget(clearbtn)
+        parent.add_widget(savebtn)
+        parent.add_widget(loadbtn)
+        return parent
+
+    def clear_canvas(self, obj):
+        global sand
+        self.painter.canvas.clear()
+        sand = np.zeros((longueur, largeur))
+
+    def save(self, obj):
+        print("saving brain...")
+        brain.save()
+        plt.plot(scores)
+        plt.show()
+
+    def load(self, obj):
+        print("loading last saved brain...")
+        brain.load()
+
+
+# Running the whole thing
+if __name__ == '__main__':
+    CarApp().run()
+
+------------------------------------------------------------------
+ai.py
+----------------------------------
+# AI for Self Driving Car
+
+# Importing the libraries
+
+import numpy as np  # it's a library for working with arrays
+import random
+import os  # for loading the model
+import torch  # for implementing our Neural Network. it can handle dynamic graphs
+import torch.nn as nn  # most essential module for Neural Network
+import torch.nn.functional as F  # essential functions
+import torch.optim as optim  # optimizer
+import torch.autograd as autograd  # for gradient
+from torch.autograd import Variable  #
+
+
+# Creating the architecture of the Neural Network
+# Network inherits all of the nn.Module class.
+class Network(nn.Module):
+
+    # __init__() is python syntax
+    # the 'self' argument, is the object we're gonna make from this class
+    # So whenever we want to use a variable from this object, we use 'self' before the varriable.
+    # input_size is the number of inputs (5 in this case: 3 signals + 2 orientations).
+    # nb_action is the 3 possible actions
+    def __init__(self, input_size, nb_action):
+        # we use super() to be able to use the inherited module. Network is the child class, and self is the object
+        super(Network, self).__init__()
+        # the passing input_size to the instance of this class will be stored into its input_size variable
+        self.input_size = input_size
+        self.nb_action = nb_action
+        # defiine 2 full connections between 'input layer and hidden layer' and 'hidden layer and output layer'
+        # the Linear() method can create` the connection. it takes the number of first layer and second layer
+        # we tried many values and ended up using 30 as the number of Neruns in hidden layer.
+        self.fc1 = nn.Linear(input_size, 30)
+        self.fc2 = nn.Linear(30, nb_action)
+
+    # It accepts 'self', because we need its properties, and entering 'state'
+    # and returns Q value of each possible action
+    def forward(self, state):
+        # 'x' represents the hidden neurons. F.relu() is the inactivation function for activating our Neural Network. (rectifier function)
+        # we should activate the first connection. it accepts state as input.
+        x = F.relu(self.fc1(state))
+        # the second connection, gets the out put of first connection and returns Q value
+        q_values = self.fc2(x)
+        return q_values
+
+
+# Implementing Experience Replay
+
+
+class ReplayMemory(object):
+    # self refers to future instance object of this class.
+    # capacity is the maximum number of memory cells, existing in (here is 100 last transitions)
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.memory = []
+
+    # it will append new transition to the memory + it makes sure that the moemory has always 100 transition
+    # the 'event' acts as transition, is an object of 4 elements: last_state, new_state, last_section = 80, last_reward
+    def push(self, event):
+        self.memory.append(event)
+        # len() will be the length or number of an array - the 'del' will remove the first cell of the array.
+        if len(self.memory) > self.capacity:
+            del self.memory[0]
+
+    # this method gets some random samples from memory and returns them
+    # Since we want some fixed-size samples, we need 'batch_size' as argument which will be 40
+    # we use the 'sample' function of the 'random' imported class. it accepts an array and size
+    # the 'zip(*)' will reshape the array. like: list = [(1,2,3),(4,5,6)]  -> then -> zip(*list) = [(1,4),(2,3),(5,6)]
+    # in this case, the moemory cells will be (state_1, action_1, reward_1), (state_2, action_2, reward_2),...
+    # with zip(*) it will be: samples: (state_1, state_2, ...), (action_1, action_2, ...), (reward_1, reward_2, ...)
+    # so we will be able to send each of these batches, separatly into pyTorch variables.
+    def sample(self, batch_size):
+        samples = zip(*random.sample(self.memory, batch_size))
+        # the map() accepts a function (here to convert sampels into pytorch variables)
+        # the second argument is what we want to implement first function on to.
+        # 'lambda' is just the name of the function. 'x' is just the function's argument (we're gonna pass 'samples' to it)
+        # after ':' is what we want to return. This lambda function will take the samples,
+        # concatenate them with respect to the first dimention (0) and then convert these
+        # tensors into some torch variables that contain both a tensor and a grardient.
+        return map(lambda x: Variable(torch.cat(x, 0)), samples)
+
+
+# Implementing Deep Q Learning (Dqn = Deep Q Network)
+# Dqn class is our artificial intelligence
+class Dqn():
+    # input_size is the number of inputs (number of dimentions in the vectors that are including our state = input states).
+    # nb_action is the 3 possible actions
+    def __init__(self, input_size, nb_action, gamma):
+        self.gamma = gamma
+        # it's the sliding window of the evolving mean of the last 100 rewards. we fill it over time.
+        self.reward_window = []
+        # creating our Neural Network instance.
+        self.model = Network(input_size, nb_action)
+        # initialize the capacity of memory for all transitions(states, actioins and rewards) with 100000 cells
+        # Then, we will create random samples of these 100000
+        self.memory = ReplayMemory(100000)
+        # the 'Adam' optimizer class, is really good for self-driving car. other optimizers are also good for other purposes. like: rmsprop
+        # we pass all the model parameters and the learning rate.
+        self.optimizer = optim.Adam(self.model.parameters(), lr=0.0005)
+        # initialize last_state as a torch tensor. it accepts input size which will be 5 (3 direction and 2 orientations)
+        # the unsqueeze(0) will create the first fake dimantion of that state.
+        self.last_state = torch.Tensor(input_size).unsqueeze(0)
+        # it will be the action2rotatioin = 0 or 20 or -20
+        self.last_action = 0
+        self.last_reward = 0
+
+    # the chosen action is based on the state
+    def select_action(self, state):
+        # with softmax method, we select the best action and exploring different actions at tht same time.
+        # alternative to softmax is rmax which just selects the best action directly
+        # softmax accepts our Neural Network
+        # we should pass the state as torch variable and thanks to "torch.no_grad()", we can include the gradients associated to this input state.
+        # we need a temperature paramether to see if the Neural Network decides the action or not.
+        # the more it get close to 0, the less sure it decides, the more it get close to 1, is more sure it decides,
+        # here the temprature paramether is T=100
+        # suppose the returned values from softmax() is [0.04, 0.11, 0.85] -> the values time tempreture will be [0, 0.02, 0.98]
+        # so we will be more sure which action is the best.
+        # if we set T to 0, the AI will be deactivated.
+        # Attention!!! - if we increase the Tempreture, it will be more sure about the highest Q value of chosen action,
+        #                so it will explore less than before. it goes straight and do less random ations.
+        with torch.no_grad():
+            probs = F.softmax(self.model(Variable(state)) * 100,
+                              dim=1)  # T=100
+        # multinomial() will give us a random draw from this probs. it returns a pyThorch variable with a fake badge
+        action = probs.multinomial(1)
+        # the action 0 or 1 or 2 that we're looking for is contained the indexs [0, 0]
+        return action.data[0, 0]
+
+    # the arguments of learn() method are based on Markov Decision Process.
+    # we take array of states from memory as batch_state thanks to sample
+    def learn(self, batch_state, batch_next_state, batch_reward, batch_action):
+        # get the model of states
+        # the gather() method gets the best action (just 1) of all batch of actions
+        # previously we used a fake first cell fo batch_state, but we didn't use it for batch_action.
+        # that's why we need 'batch_action.unsqueeze(1)'
+        # unsqueeze(0) corresponse to fake dimention of states and unsqueeze(1) corresponse to fake dimention of actions
+        # Note: we also need to kill this fake batch with 'squeeze(1)'
+        outputs = self.model(batch_state).gather(
+            1, batch_action.unsqueeze(1)).squeeze(1)
+        # we need 'next_outputs' to calculate the Q-Target value
+        # we detach several states in the 'batch_next_state' and choose the maximum
+        # actions is represented by the index 1, so we used max(1)
+        # and the next state is represented by the index 0, so we used max(1)[0]
+        next_outputs = self.model(batch_next_state).detach().max(1)[0]
+        # Q-Target = R(s, a) + γ max(Q(a, s(t+1))) = the reward + gamma times the Q value of next state based on action 'a'
+        target = self.gamma * next_outputs + batch_reward
+        # Loss is the error of prediction
+        # Loss = the difference between Q-Target (old Q value) and Q (new Q value).
+        td_loss = F.smooth_l1_loss(outputs, target)
+        # 'zero_grad()' will reinitialize the optimizer at each iteration of the loop
+        self.optimizer.zero_grad()
+        # for back propagation and free the momory:
+        # td_loss.backward(retain_variables=True)
+        td_loss.backward(retain_graph=True)
+        # this will update the weight and back propagates the error into the Neural Network
+        self.optimizer.step()
+
+    # update() gets last reward and the last signal of three sensors.
+    # it get called like this:
+    # action = brain.update(last_reward, last_signal)
+    def update(self, reward, new_signal):
+        # we can get the new state by the signal that detected new state. (signal1, signal2, signal3 , orientation, -orientation)
+        # Since new_signal is the combination of 5 elements, we should convert it into a Torch Tensor.
+        # we should make sure all the tensors are float.
+        # add fake dimention for states (index 0)
+        new_state = torch.Tensor(new_signal).float().unsqueeze(0)
+        # update memory by LongTensor that accepts an integer
+        # the last_reward added to an empty array
+        self.memory.push((self.last_state, new_state,
+                          torch.LongTensor([int(self.last_action)]),
+                          torch.Tensor([self.last_reward])))
+        # we updated the state and memory, now we're in new state. so everything should be updated.
+        action = self.select_action(new_state)
+        # start learning with some condition
+        if len(self.memory.memory) > 100:
+            batch_state, batch_next_state, batch_action, batch_reward = self.memory.sample(
+                100)
+            # we will have 100 states, 100 actions, 100 rewards, 100 transitions
+            self.learn(batch_state, batch_next_state, batch_reward,
+                       batch_action)
+        self.last_action = action
+        self.last_state = new_state
+        self.last_reward = reward
+        # the reward_window is the window that is going to keep track,
+        # by taking the avrage of 100 last rewards
+        self.reward_window.append(reward)
+        if len(self.reward_window) > 1000:
+            del self.reward_window[0]  # delete the first element
+        # the output from Neural Network will be action
+        return action
+
+    # calculate the summation of all the rewards in the reward_window (that are between -1 & 1)
+    # devided by the total number of elements in this reward_window (which should not be 0)
+    def score(self):
+        return sum(self.reward_window) / (len(self.reward_window) + 1.)
+
+    # with save method, we can quit the game and save everything,
+    # then come back to the game and load the game with load method.
+    # we just need to save Neural Network model and the optimizer.
+    # add some key-values to Python dictionary.
+    # Once we save the game, it will create a file named 'last_brain.pth' which includes our dictionary.
+    def save(self):
+        torch.save(
+            {
+                'state_dict': self.model.state_dict(),
+                'optimizer': self.optimizer.state_dict(),
+            }, 'last_brain.pth')
+
+    # os = operation system, the path is our reletive path to this folder
+    def load(self):
+        if os.path.isfile('last_brain.pth'):
+            print("=> loading checkpoint... ")
+            checkpoint = torch.load('last_brain.pth')
+            # thanks to 'load_state_dict()' method, we can load a property from a file
+            self.model.load_state_dict(checkpoint['state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+            print("done !")
+        else:
+            print("no checkpoint found...")
+------------------------------------------------------------------
+
