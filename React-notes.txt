@@ -1,0 +1,3105 @@
+React:
+------------------------------------------------------
+function Person(props) {
+  return (
+    <div className="person">
+      <h1>{props.name}</h1>
+      <p>Your Age: {props.age}</p>
+    </div>
+  );
+}
+
+var app = (
+  <div>
+     <Person name="Max" age="28" />
+     <Person name="Manu" age="29" />
+  </div>
+);
+
+ReactDOM.render(app, document.querySelector('#app'));
+------------------------------------------------------
+HTML:
+<div id="app"></div>
+
+------------------------------------------------------
+const person = {
+    name: 'Max';
+};
+
+const secondPerson = person;
+
+person.name = 'Manu';
+
+console.log(secondPerson);  // logs: "Manu" // because Objects are passed by reference
+                                               and the pointer to the stored place is just copied.
+
+// do the real copy
+const secondPerson = {
+    ...person
+};
+
+person.name = 'Manu';
+
+console.log(secondPerson);  // logs: "Max"  //  it won't change to "Manu"
+                                                because secondPerson has different pointer now
+
+------------------------------------------------------
+
+Now suppose we have a class based component named App, and a functional component named Person.
+we can pass arguments and properties from App to Person by using 'props'.
+------------------------------------------------------
+App.js :
+--------------
+import React, { Component } from 'react';
+
+class App extends Component {
+    render() {
+        return (
+            <div className="App">
+                <Person name="Max" age="28" />
+                <Person name="Manu" age="29" >My hobbies: Racing</Person>
+                <Person name="Stephanie" age="26" />
+            </div>
+        );
+    }
+}
+--------------
+Person.js :
+--------------
+export default function Person(props) {
+    return(
+        <div>
+            <p>my name is {props.name}. with age of {props.age}</p>
+            <p>{props.children}</p>
+        </div>
+    )
+}
+------------------------------------------------------
+
+with using props.name and props.age , we could pass properties to Person component.
+also, with props.children , we can pass the value between opening and closing tags.
+--------------
+output:
+--------------
+my name is Max. with age of 28
+my name is Manu. with age of 29
+My hobbies: Racing
+my name is Stephanie. with age of 26
+------------------------------------------------------
+
+previously, we could use component states in just class based components,
+not in functional components. but now with using Hooks, we can use simple functional
+components and use both props and state in it.
+all hooks, start with 'use' keyword.
+"useState" allows us to manage state in a functional component.
+------------------------------------------------------
+app.js
+------------
+import React, { useState } from 'react';
+
+const app = props => {
+
+    const stateArr = useState({
+        persons: [
+            {name: 'Max', age: 28},
+            {name: 'Manu', age: 29},
+            {name: 'Stephanie', age: 26},
+        ],
+        otherState: 'some other value'
+    });
+
+    return (
+        <div className="App">
+            <Person name="Max" age="28" />
+            <Person name="Manu" age="29" >My hobbies: Racing</Person>
+            <Person name="Stephanie" age="26" />
+        </div>
+    );
+}
+------------------------------------------------------
+we pass the initial state to useState() method.
+useState returns an array of exactly 2 elements. 
+1.  the first element is the current state.
+2.  second element is the function that allows us to update this state,
+    so React will rerendered the component because of that function.
+
+so we can write the useState function like this:
+------------------------------------------------------
+const [ personsState, setPersonsState] = useState({
+    persons: [
+        {name: 'Max', age: 28},
+        {name: 'Manu', age: 29},
+        {name: 'Stephanie', age: 26},
+    ],
+    otherState: 'some other value'
+});
+------------------------------------------------------
+so instead of "this.state.persons" in class-based components,
+we write: "personsState.persons"
+
+and instead of "this.setState" to change the state in class-based component,
+we write: setPersonsState.
+
+for an instance:
+------------------------------------------------------
+const switchNameHandler = () => {
+    setPersonsState({
+        persons: [
+            {name: 'Maximilian', age: 28},
+            {name: 'Manu', age: 29},
+            {name: 'Stephanie', age: 27},
+        ]
+    })
+}
+------------------------------------------------------
+
+and whenever we want to call it, we just need to write:
+<button onClick={ switchNameHandler } >Switch Name</button>
+
+it returns:
+---------------
+persons: [
+    {name: 'Maximilian', age: 28},
+    {name: 'Manu', age: 29},
+    {name: 'Stephanie', age: 27},
+]
+---------------
+
+we can see that "otherState: 'some other value'" is missing.
+*** because when we're using React Hooks, the function of returned array from useState,
+    does NOT merge whatever we passed to it. instead, it replaces the old state with new one.
+    so we should manually ensure that we passed the entire state to the function.
+
+the more elegant way to not manually merge our state, is using "useState" multiple times. like:
+------------------------------------------------------
+const [ personsState, setPersonsState] = useState({
+    persons: [
+        {name: 'Max', age: 28},
+        {name: 'Manu', age: 29},
+        {name: 'Stephanie', age: 26},
+    ]
+});
+
+const [ otherState, setOtherState] = useState({otherState: 'some other value'});
+------------------------------------------------------
+*** so we have 2 useState() that each of them has a part of whole component state.
+
+------------------------------------------------------
+
+*** Passing Method References Between Components: ***
+
+we can also pass a method to other component through their tags, when we call that component.
+by using "click={}" property.
+------------------------------------------------------
+<Person 
+name="Manu" 
+age="29" 
+click={this.switchNameHandler}
+>My hobbies: Racing</Person>
+------------------------------------------------------
+
+so we just passed the switchNameHandler method to the Person component. so in Person.js and 
+its functional component, we have: onClick={props.click}
+------------------------------------------------------
+export default function Person(props) {
+    return (
+        <div>
+            <p onClick={props.click}>my name is {props.name}. with age of {props.age}</p>
+            <p>{props.children}</p>
+        </div>
+    )
+}
+------------------------------------------------------
+
+we can also pass "values" to the passing method to the other component.
+imagine our function was like this:
+------------------------------------------------------
+const switchNameHandler = (newName) => {
+    this.setState({
+        persons: [
+            {name: newName, age: 28},
+            {name: 'Manu', age: 29},
+            {name: 'Stephanie', age: 26},
+        ]
+    })
+}
+------------------------------------------------------
+and we want to pass a value as newName to switchNameHandler.
+there are 2 ways for doing that:
+1.  use bind() to bind "this". "this", controls what "this.setState" referes to.
+    and the value we want to pass.
+------------------------
+<button onClick={ this.switchNameHandler.bind(this, 'Maximilian') } >Switch Name</button>
+----
+or
+----
+<Person 
+name="Manu" 
+age="29" 
+click={ this.switchNameHandler.bind(this, 'Maximilian') }
+>My hobbies: Racing</Person>
+------------------------
+
+2.  use arrow function.
+------------------------
+<button onClick={ () => this.switchNameHandler('Maximilian') } >Switch Name</button>
+------------------------------------------------------
+
+imagine we want to pass a method for changing inputs (to write sth via input field).
+and we want to pass that method to other coponent.
+we should use "changed" instead of "click".
+------------------------
+const switchNameHandler = (event) => {
+    this.setState({
+        persons: [
+            {name: 'Max', age: 28},
+            {name: event.target.value, age: 29},
+            {name: 'Stephanie', age: 26},
+        ]
+    })
+}
+
+--------
+<Person 
+name="Manu" 
+age="29" 
+click={ this.switchNameHandler.bind(this, 'Maximilian') }
+changed={ this.nameChangedHandler }
+>My hobbies: Racing</Person>
+
+--------
+export default function Person(props) {
+    return (
+        <div>
+            <p onClick={props.click}>my name is {props.name}. with age of {props.age}</p>
+            <p>{props.children}</p>
+            <input type="text" onChange={props.changed} value={props.name} />
+        </div>
+    )
+}
+------------------------------------------------------
+so the "props.changed" referes to this.nameChangedHandler
+value={props.name} also referes to the changed name we have in state.
+------------------------------------------------------
+
+*** Inline Style ***
+
+we can write css in an javascript object in render method.
+
+render() {
+    const style = {
+        backgroundColor: 'white',
+        font: 'inherit',
+        border: '1px solid blue',
+        padding: '8px'
+    };
+
+    return (
+        <div className="App">
+            <button
+              style={style}
+              onClick={ () => this.switchNameHandler('Maximilian') }
+            >
+            </button>
+        </div>
+    )
+}
+------------------------------------------------------
+
+*** Rendering Content Conditionally ***
+
+if we want to write Js code in render() method, we should use curly braces '{}'
+but we cannot write 'if() {} statement' in that braces.
+we can use '?' for conditions:
+----------------
+{
+   this.state.showPersons === true ? <div></div> : null ;
+}
+----------------
+
+the other thing we can do, is to bring if() statement, before return() method.
+------------------------------------------------------
+render() {
+   
+    if ( this.state.showPersons === true) {
+        <div>
+            <Person name="Max" age="28" />
+            <Person name="Manu" age="29" >My hobbies: Racing</Person>
+            <Person name="Stephanie" age="26" />
+        </div>
+    }
+
+    return (
+        <div className="App">
+            <button
+                style={style}
+                onClick={ () => this.switchNameHandler('Maximilian') }
+            >
+            </button>
+        </div>
+    )
+}
+
+------------------------------------------------------
+
+*** Lists ***
+in order to write dynamic lists, we should use map() . because it Maps through array and returns new array.
+-------------------
+{this.state.persons.map((person, index) => {
+    return <Person 
+        click={()=> this.deletePersonHandler(index)}
+        name={person.name},
+        age={person.age}
+        key={person.id}
+        changed={(event)=>this.nameChangedHandler(event, perrson.id)}
+        />
+})}
+-------------------
+the changed property is used to pass the method 'nameChangedHandler' to <Person/> component.
+------------------------------------------------------
+
+*** Conditional Sytling ***
+------------
+const classes = [];
+
+if (this.state.persons.length <= 2){
+classes.push('red');        // classes = ['red']
+}
+
+if (this.state.persons.length <= 1){
+classes.push('bold');       // classes = ['red', 'bold']
+}
+----
+render(){
+    return(
+        <p className={classes.join(' ')}  ></p>
+    )
+}
+------------------------------------------------------
+
+*** using pseddo classes in Inlined-Style javascript ***
+
+we should do that with a package name 'radium' => '$npm i --save radium'
+---
+import Radium from 'radium';
+---
+
+we should grab the App component when we want to export it:
+---
+export default Radium(App);
+---
+
+now we can use ':hover' :
+-----------------------
+render() {
+    const style = {
+        backgroundColor: 'white',
+        font: 'inherit',
+        border: '1px solid blue',
+        padding: '8px',
+        ':hover': {
+            backgroundColor: 'lightgreen',
+            color: 'black'
+        }
+    };
+}
+------------------------------------------------------
+
+*** Adding Media Queries With Radium ***
+
+in order to use this feature, we should import StyleRoot from 'radium',
+and wrap entire application with <StyleRoot></StyleRoot>
+---
+import Radium, {StyleRoot} from 'radium';
+
+const style = {
+    '@media (min-width: 500px)': {
+        width: '450px';
+    }
+}
+
+return (
+    <StyleRoot>
+        <div className="App">
+            <div className="Person" style={style}></div>
+        </div>
+    </StyleRoot>
+)
+------------------------------------------------------
+
+Another library for Inlined-Style javascript, is:
+
+*** Styled Components ***
+// https://styled-components.com/
+
+$npm install --save styled-components
+
+------------------------------------------
+import styled from 'styled-components'
+
+with importing this library, we can use 'styled' keyword, and it will have
+any HTML method that we might want to use, in the shape of methods. like:
+------------
+styled.h1``   or    styled.div``  
+------------
+
+between the back ticks `` , we can bring our styles:
+------------
+styled.div`
+  display: inline-block;
+  border-radius: 3px;
+  padding: 0.5rem 0;
+  margin: 0.5rem 1rem;
+  width: 11rem;
+  background: transparent;
+  color: white;
+  border: 2px solid white;
+`
+------------
+
+with this approach, we can store an element with its styles in a variable:
+---
+const StyledDiv = styled.div`
+  display: inline-block;
+  padding: 0.5rem 0;
+  margin: 0.5rem 1rem;
+  width: 11rem;
+  background: transparent;
+`;
+---
+
+*** then we can use this varriable as a regular React component:
+    because every method provided by styled object, returns a React component.
+---
+return(
+    <StyledDiv>
+        <h1></h1>
+        <p></p>
+    </StyledDiv>
+)
+---
+
+the style that we added in the "Styled Component" is not Inlined-css,
+but instead, Styled Component package takes them and puts them in the <head/> tag of the document.
+so they are regular css classes that automatically managed for us in <head/> tag.
+so all the syntaxs are similar to css.
+-------------------------------------------------------
+const StyledButton = styled.button`
+    background-color: green;
+    color: white;
+    font: inherit;
+    border: 1px solid blue;
+
+    &:hover {
+        background-color: lightgreen;
+        color: black;
+    }
+`;
+
+...
+...
+
+<StyledButton onClick={this.togglePersonHandler}>
+    Toggle Button
+</StyledButton>
+-------------------------------------------------------
+
+*** Conditional CSS with Styled Component ***
+
+we can pass a property (any property of our choice) for example "alt" to the new tag (<StyledButton>)
+and assign a value.
+-----------
+<StyledButton alt={this.state.showPersons} onClick={this.togglePersonHandler}>
+    Toggle Button
+</StyledButton>
+-----------
+so the "this.state.showPersons" will pass as a props to the css code of the <StyledButton> tag.
+so we can use this props at the css code of the <StyledButton> .
+-----------
+const StyledButton = styled.button`
+    background-color: ${props => props.alt ? 'red' : 'green'};
+    color: white;
+    font: inherit;
+    ...
+`;
+-----------
+
+so we used a syntax and wrote a function that Style Component accepts.
+
+---------------------------------------------------
+
+*** Split App To More Components ***
+
+lets say, we want to have a list of persons. so:
+1. In App.js, we will check the state for any info we want to pass to the persons.
+2. In Persons.js, we will loop over the array that is passed via App.js
+3. In Person.js, we will create a single person.
+--------------------------
+App.js:
+-------
+state = {
+    persons: [
+        { id: 'asf1', name: 'Max', age: 28},
+        { id: 'adaw2', name: 'Manu', age: 29},
+        { id: 'adwd11', name: 'Stephanie', age: 26},
+    ],
+    otherState: 'some other value',
+    showPersons: false
+}
+
+render(){
+    if( this.state.showPersons ){
+        persons = (
+            <div>
+              <Persons 
+                persons={this.state.persons}
+                click={this.deletePersonHandler}
+                changed={this.nameChangedHandler}
+              />
+            </div>
+        )
+    }
+    return
+}
+-------
+
+Persons.js
+-------
+import Person from './Person/Person';
+
+const persons = (props) => props.persons.map(( person, index )=>{
+    return <Person 
+      click={()=> props.clicked(index)}
+      name={person.name}
+      age={person.age}
+      key={person.id}
+      changed={(event) => props.changed(event, person.id)}
+    />
+});
+
+export default persons;
+-------
+
+Person.js
+-------
+export default function Person(props) {
+    return(
+        <div>
+            <p>my name is {props.name}. with age of {props.age}</p>
+            <p>{props.children}</p>
+        </div>
+    )
+}
+-----------------------------------------------------
+
+*** useEffect ***
+ 
+useEffect, like useState is a React hook, which covers all class-based lifesycles in one hook!!
+so with using useEffect(), the functional components can support lifesycle methods.
+useEffect takes a function that will run for every render cycle.
+----------
+useEffect( () => {
+    console.log('it is happening');
+});
+----------
+it will run after component, renders. and also gets rerendered whenever component updates.
+And for initial state, we can still use useState() .
+useEffect combines the componentDidMount() and componentDidUpdate().
+
+*** But how to control when useEffect() should get called?
+We can pass second argument to useEffect() that illustrate when it should get called!
+like:
+----------
+useEffect( () => {
+    console.log('it is happening');
+}, [props.persons]);
+----------
+it says whenever the props.persons has been changed, call useEffect().
+
+now if you have different effect that depends on different data, we can use another useEffect()
+we can have as many useEffect() as you want.
+
+*** what if we wanted to use useEffect() just as componentDidMount() ? (for the first time, not every time the component gets rerendered)
+we can pass an empty array to the useEffect() :)))
+the array shows Recat that if the dependencies have changed, it should rerendered.
+and if it doesn't have any dependencies, so it should never rerender itself again.
+----------
+useEffect( () => {
+    console.log('it is happening');
+}, []);
+----------
+we can also use several dependencies if we want:
+----------
+useEffect( () => {
+    console.log('it is happening');
+}, [a,b,c]);
+----------
+
+*** Clean Up ***
+if we want to cleanup anything we want, like cleaning up some eventListener...
+in class-based components we had componentWillUnmount() . 
+we could write any code that needed to run right before the component is removed.
+
+in React Hooks we can use useEffect() to do the clean-up.
+we can return nothing from useEffect() but if we do, the code in the return() will 
+get called before the component gets removed!
+----------
+useEffect( () => {
+    console.log('it is happening');
+
+    return () => {
+        console.log("cleaning up");
+    }
+}, []);
+----------
+
+*** So whenever we want to get rid of a component, we can clean-up its state, by using this syntax.
+right now, because we have an empty array as second argument, it means that
+it will clean the state just once! Just after first time that the component mounts.
+But if we want to do the clean-up after every updates, we shouldn't pass the 2nd argument:
+----------
+useEffect( () => {
+    console.log('it is happening');
+    return () => {
+        console.log("cleaning up");
+    }
+});
+----------
+
+*** Summery ***
+*** so if the second argument was not exist, useEffect() and its return() will get called every time that updates!
+    so if the second argument was an empty array, useEffect() and its return() will get called just once!
+    so if the second argument was an array of some circumstances, useEffect() and its return() will get called whenever the conditions were true!
+***************
+
+*** Very Very Very Important ***
+
+*** clearTimeout() ***
+
+whenever we use setTimeout(()=>{}) , we should clean it up with clearTimeout(()=>{}) !!!
+so if we used setTimeout() in useEffect(), we should delete it with clearTimeout() in return() method!
+----------
+useEffect( () => {
+    const timer = setTimeout(()=>{
+        alert("Saved data to cloud!");
+    },1000)
+    return () => {
+        clearTimeout(timer);
+    }
+});
+----------
+
+*** React memo ***
+
+React memo is used for functional components to wrap the component that might
+not need to update with every change in the parent component! 
+so it will get changed and rerendered whenever one of its reletive dependencies gets changed.
+but we should use them wisely! because we're adding extra logic to our application and maybe slows down the app.
+
+*** render() ***
+in the return() method of a render() method, we can have an array of elements
+instead of a single element.
+but if you don't want to use array, you should wrap all JSX code in a single element.
+so we can build a component that is using for wrapping all the codes and export the children
+--------------------
+Aux.js
+-------
+const aux = props => props.children;
+
+export default aux;
+-------
+so in any other components, we have:
+-------
+render(){
+    return(
+        <Aux>
+            <div></div>
+            <div></div>
+            <p></p>
+            <p></p>
+        </Aux>
+    )
+}
+-------
+
+but React itself has a built-in wrapper component named <React.Fragment/>
+or you can import frargment from 'react' and use <Fragment/>
+-------
+import React, {Fragment} from 'react';
+
+render(){
+    return(
+        <Fragment>
+            <div></div>
+            <div></div>
+            <p></p>
+            <p></p>
+        </Fragment>
+    )
+}
+-------
+
+*** Higher Order Component ***
+components that have no logical statements, but a simple helper JSX
+Aux was a HOC, now we want to create a component that accepts classes and wrap children.
+
+-------
+WithClass.js
+-------
+const withClass = props =>(
+    <div className={props.classes}>{props.children}</div>
+);
+
+export default withClass;
+-------
+
+How to use it? like this:
+-------
+import WithClass from '../../HOC/WithClass';
+
+render(){
+    return(
+        <WithClass classes={classes.App}>
+            <button></button>
+            <p></p>
+            <p></p>
+        </WithClass>
+    )
+}
+-------
+
+so instead of className={}, we used classes={}. because we named the property of WithClass as 'classes'
+
+*** Another way to create a Higher Order Component:
+    is to create a function that accepts 2 arguments.
+    1.  WrappedComponent: 
+    2.  className
+
+the purpose of a HOC, is to add a div with certain CSS class around any element. 
+here we have a function that returns a functional component.
+------------------
+import React from 'react';
+
+const withClass = (WrappedComponent, className) => {
+    return props => (
+        <div className={className}>
+          <WrappedComponent {...props} />   // it supports any probable props that a component needs.
+        </div>
+    )
+}
+
+export default withClass;
+------------------
+
+How to use it? we add it when we export a component:
+------------------
+export default withClass(App, classes.App);     // we export the App, but we wrap it with withClass method.
+------------------------------------------------------
+
+*** PropTypes ***
+
+it is used to make sure we pass right properties to the component with right types.
+---
+$ npm install --save prop-types
+---------------------------------------
+import PropTypes from 'prop-types';
+
+const functionalComponent = (props) => {
+    ... 
+}
+
+functionalComponent.propTypes = {
+    click: PropTypes.func,
+    name: PropTypes.string,
+    age: PropTypes.number,
+    changed: PropTypes.func,
+};
+
+export default functionalComponent;
+---------------------------------------
+
+'propTypes' will watch out for incorrect props and give warnings , all in Development Mode
+---------------------------------------------------------
+
+*** Refs in class-based components ***
+
+How to select element using React? a better way of sellecting elements than querySelectors is using Refs.
+Refs stands for References.
+On any element (including our own component) we can add ref keyword. there are different ways to use it:
+
+1.  pass a function to the 'ref' property. ref={()=>{}}
+    the argument we pass to this function is a reference to the element we place the ref on.
+    for example if we place 'ref' in <input /> we can name the argument as 'inputEl'
+    ---
+    <input 
+      key="13"
+      ref={(inputEl) => {this.inputElement = inputEl}}
+      type="text"
+    />
+    ---
+
+    here, we stored the inputEl as a reference to a global property named 'inputElement'
+    so we can use inputElement anywhere in our application
+    like:
+    ---
+    componentDidMount() {
+        this.inputElement.focus();
+    }
+    ---
+    this approach only works in class-based component
+
+
+2.  using React.createRef() in constructor() method.
+    ---
+    constructor(props) {
+        super(props);
+        this.inputElementRef = React.createRef();
+    }
+    ...
+    <input 
+      key="13"
+      ref={this.inputElementRef}
+      type="text"
+    />
+    ---
+    by this approach, we create a reference, and store it in inputElementRef
+    so we can use this.inputElementRef.current anywhere we want
+    current stands for current reference
+    ---
+    componentDidMount() {
+        this.inputElementRef.current.focus();
+    }
+
+
+*** Refs in functional components ***
+
+for functional components, we use 'useRef'. we can pass values as initial value, but if we don't want, we can pass null.
+-------------------
+const functionalComponent = props => {
+    const toggleBtnRef = useRef(null);
+    
+    ...
+    render(){
+      return(
+        <button ref={toggleBtnRef} className={btnClass} onClick={props.clicked}>Toggle Person</button>
+      )
+    }
+}
+
+-------------------
+
+now we can use and access that reference in useEffect() methods. because useEffect(), get called
+after the component rendered.
+-------------------
+useEffect(() => {
+    toggleBtnRef.current.click();   // currnet means the current reference
+    return () => {
+        console.log("cleanup work in useEffect");
+    }
+})
+-------------------
+
+*** React.createContext() ***
+
+sometimes we don't want to pass a property from component to component to component!
+so we create a context to bypass components and pass data directly from component A to component D.
+
+React.createContext() allows us to initialize our context with a default value.
+because this context will be a globally available javascript object.
+here we create an authentication context:
+-------------------
+import React from 'raect';
+
+const authContext = React.createContext({
+    authenticated: false,
+    login: () => {}         // means that, it should be a function
+})
+
+export default authContext;
+-------------------
+
+so in another component, we import above component as a provider JSX component:
+with help of Provider, we can set a 'value' property to pass some values to our context.
+-------------------
+import AuthContext from './context/auth-context'
+
+<AuthContext.Provider
+  value={{
+      authenticated: this.state.authenticated,
+      login: this.loginHandler
+  }}
+>
+
+  <Cockpit />
+  {persons}
+
+</AuthContext.Provider>
+-------------------
+
+so we can use the AuthContext in Cockpit or persons components!
+previously, we provided a context. now in the Cockpit or Persons component, we consume it!
+AuthContext.Consumer doesn't accept JSX code as children. 
+instead it accepts a function that returns our JSX code.
+it gets access to the context by the argument we're passing to it.
+-------------------
+in Cockpit.js
+------
+import AuthContext from '../auth-context';
+
+render(){
+    return(
+        <AuthContext.Consumer>
+            {(context) => {
+                context.authenticated ? <p>Authenticated!</p>: <p>Please log in</p>
+            }}
+        </AuthContext.Consumer>
+
+        <AuthContext.Consumer>
+            {context => <button onClick={context.login}>Login</button>}
+        </AuthContext.Consumer>
+    )
+}
+---------------------------------------------------------
+
+*** Alternative Way For Creating Context in Class-Based Components ***
+
+we can use a static property named contextType. static means it can be reached from outside
+of a class without having to instanitate an object based on that class.
+-------------------
+import AuthContext from '../auth-context';
+
+class Person extends Component{
+    constructor(){...}
+
+    static contextType = AuthContext;
+
+    componentDidMount(){
+        console.log(this.context.authenticated);
+        console.log(this.context.login);
+    }
+}
+-------------------
+so we just needed assing AuthContext with static contextType!
+then we could access the context with a keyword name context in any place like componentDidMount.
+or we can use it in render() without using Consumer, as below:
+-------------------
+{(context) => {
+    this.context.authenticated ? <p>Authenticated!</p>: <p>Please log in</p>
+}}
+-------------------
+
+/////////////////////////////////
+////////// Important ////////////
+/////////////////////////////////
+
+*** Alternative Way For Creating Context in functional Components - useContext ***
+
+useContext() allows us to access our context anywhere in our functional component body
+-------------------
+import AuthContext from '../auth-context';
+
+const authContext = useContext(AuthContext);
+
+console.log(authContext.authenticated);
+// or
+<button onClick={authContext.login}>Log in</button>
+-----------------------------------------------------------
+
+*** Containers vs Components ***
+
+Containers are files that change the state, but Components are files that are just for presentational point of view
+that do not manage state.
+
+*** Routing ***
+
+$ npm install --save react-router react-router-dom
+
+with using BrowserRouter, we can use the routing features.
+BrowserRouter also accepts a 'basename' property that by default it is set to '/'.
+if our basename is different, we should specify that. like <BrowserRouter basename="/my-app" />
+--------------
+import {BrowserRouter} from 'react-router-dom';
+
+// wrap the entire App with <BrowserRouter></BrowserRouter>
+
+render(){
+    return(
+        <BrowserRouter>
+            <div className="App">
+              <Blog />
+            </div>
+        </BrowserRouter>
+    )
+}
+-----
+and then we can import 'Route' in the children components like <Blog />.
+-----
+import {Route} from 'react-router-dom';
+...
+<Route path="/" exact render={()=> <h1>Home</h1>} />
+-----
+if we want to render a component instead of just a HTML element, we use component keyword.
+-----
+<Route path="/" exact component={Posts} />
+-----
+
+*** Link ***
+
+-----
+<Link to={
+    pathname: '/new-post',
+    hash: '#submit',
+    search: '?quick-submit=true'   
+}>New Post</Link>
+-----
+here we used absolute path. it means if user intentionally write one of these for example:
+'/new-post' or '/posts/new-posts'
+browser will lead user to the same component.
+but if we want to have a reletive path, we can use this approach. so the route will be unique:
+-----
+<Link to={
+    pathname: this.props.match.url + '/new-post',
+}>New Post</Link>
+-----
+
+*** NavLink ***
+
+in order to have Active className, you can use <NavLink />
+-----
+<NavLink
+  to="/"
+  exact
+  activeClassName="my-active"
+  activeStyle={{
+      color: '#fa923',
+      textDecoration: 'underline'
+  }}
+>Home</NavLink>
+-----
+
+*** Route variable ***
+-----
+<Route path="/:id" exact component={Posts} />
+...
+<Link to={'/' + post.id}>Let's Go<Link/>
+-----
+
+*** Switch *** 
+
+we can call React to only render one component at the time! so we should use switch.
+Switch tells React to only load the first component that matches from a given set of routes.
+-----
+import {Route, NavLink, Switch} from 'react-router-dom';
+
+<Switch>
+    <Route path="/" exact component={Posts} />
+    <Route path="/new-post" component={NewPosts} />
+    <Route path="/:id" exact component={FullPost} />
+</Switch>
+-----
+
+if we put some routes out of <Switch> they always get analyzed and rendered.
+
+instead of <Link> we can use the 'history' property and go to a link. like:
+---
+this.props.history.push('/' + id);
+---
+'history' has also methods like goForward() or goBack() for going forward and backward buttons.
+and also there is a push() method that push a new page onto stack of pages
+
+
+*** Redirecting ***
+
+it doesn't render a component, but just change the route.
+---
+import {Switch, Redirect} from 'react-router-dom';
+
+<Switch>
+    <Redirect from='/' to='/posts' />
+</Switch>
+---
+
+*** 404 Not Found Page ***
+
+it should always be the last route in Switch tag. it won't work with Redirecting approach!
+---
+<Switch>
+    <Route path="/" exact component={Posts} />
+    <Route path="/new-post" component={NewPosts} />
+    <Route render={()=> <h1>Not Found</h1>} />
+</Switch>
+---
+
+*****************************
+******* Very Important ******
+*****************************
+
+*** Code Splitting - Lazy Loading ***
+
+means that we should render components that user go into.
+and not load all components when user didn't go there yet!
+so we only load the component once we need it.
+
+we need a Higher Order Component for that. in HOC folder, we create a file name 'asyncComponent.js'
+we create a HOC that returns a class-based component.
+the following config is compatible with webpack config of create-react-app
+-----------------
+asyncComponent.js
+-----------------
+import React, {Component} from 'react';
+
+const asyncComponent = (importComponent) = {
+    return class extends Component {
+        state = {
+            component: null
+        }
+
+        componentDidMount() {
+            importComponent()
+                .then(cmp => {
+                    this.setState({component: cmp.default});
+                })
+        }
+
+        render() {
+            const C = this.state.component;
+
+            return C ? <C {...this.props} /> : null;
+        }
+    }
+}
+
+export default asyncComponent;
+-----------------
+importComponent is a function that returns a promise.
+with having all the above codes in a file named 'asyncComponent.js',
+we can load components asynchronously whenever it needed.
+
+so instead of importing a component to a file, we have"
+
+instead of:
+-----------------
+import NewPost from './NewPost/NewPost';
+-----------------
+
+we have:
+-----------------
+import asyncComponent from '../../hoc/asyncComponent';
+
+const AsyncNewPost = asyncComponent(() => {
+    return import('./NewPost/NewPost');
+})
+-----------------
+
+so we import the NewPost component as an Async component. 
+then we should use AsyncNewPost instead of NewPost in <Route> tags:
+-----------------
+<Route path="/new-post" component={AsyncNewPost} />
+-----------------
+
+*** New way to use Lazy Loading ***
+
+React.lazy() helps us to load components asynchronously.
+let's say we have this lines of code in our App.js:
+--------------------------------------
+import Posts from './containers/Posts';
+import User from './containers/User';
+import Welcome from './containers/Welcome';
+
+class App extends Component {
+    render(){
+        return(
+            <BrowserRouter>
+              <React.Fragment>
+                <NavLink to="/user">User Page</NavLink>
+                <NavLink to="/posts">Posts Page</NavLink>
+              </React.Fragment>
+              <Route path="/" component={Welcome} exact />
+              <Route path="/user" component={User} />
+              <Route path="/posts" component={Posts} />
+            </BrowserRouter>
+        )
+    }
+}
+
+export default App;
+--------------------------------------
+
+instead of importing components like above, we can use React.lazy();
+inside of React.lazy(), we pass an arrow function that returns an import statement
+this is a dynamic import and gets executed when this code runs.
+in order to make that work, you should use default export. Named exports are not supported.
+--------------------------------------
+const Posts = React.lazy(() => import('./containers/Posts'));
+--------------------------------------
+
+now that we want to call the dynamic component, we should use another method named 'Suspense'
+instead of using component property, we use render property in <Route>
+in render method, we have an arrow function. it wraps the <Suspense> tag, the place that we should bring our main component.
+in <Suspense> tag, there is a property named fallback for the case that react postpones the rendering. 
+--------------------------------------
+import React, {Component, Suspense } from 'react';
+
+...
+
+<Route path="/" render={() => (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Posts />
+    </Suspense>
+)} />
+--------------------------------------
+
+we can also use lazy loading in other senarios. not just in <Route> tags. like:
+--------------------------------------
+class App extends Component {
+    state = {showPosts: false};
+
+    modeHandler = () => {
+        this.setState(prevState => {
+            return { showPosts: !prevState.showPosts };
+        });
+    };
+
+    render() {
+        return (
+            <React.Fragment>
+              <button onClick={this.modeHandler}>Toggle Mode</button>
+              {this.state.showPosts ? (
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <Posts />
+                  </Suspense>
+              ) : (
+                  <User />
+              )}
+            </React.Fragment>
+        )
+    }
+}
+--------------------------------------
+
+we undrestand the difference when we see the chunk.js file with a low size in Network tab.
+
+this will not work if you want to use Server-Side-Rendering
+
+
+************************************************
+*** Setup Config For Form And Input Elements ***
+************************************************
+
+in the orderForm below, we should define all the form fields, all the inputs, 
+how they should configured and their values
+
+we have a separate component named <Input /> that is as follows:
+------------------------------------------------------------
+input.js
+---------------
+const input = (props) => {
+    let inputElement = null;
+
+    switch ( props.inputtype ) {
+        case ( 'input' ):
+            inputElement = <input className={classes.inputElement} 
+                {...props.elementConfig} 
+                value={props.value}
+                onChange={props.change} />;
+                break;
+        case ( 'textarea' ):
+            inputElement = <textarea className={classes.inputElement} 
+                {...props.elementConfig} 
+                value={props.value}
+                onChange={props.change} />;
+                break;
+        case ( 'select' ):
+            inputElement = 
+                <select 
+                  className={classes.inputElement} 
+                  value={props.value}
+                  onChange={props.change}>
+                  {props.elementConfig,options.,ap(option => (
+                      <option key={option.value} value={option.value}>
+                      {option.displayValue}
+                      </option>
+                  ))}
+                <select/>;
+                break;
+        default:
+            inputElement = <input className={classes.inputElement} 
+                {...props.elementConfig} 
+                value={props.value}
+                onChange={props.change} />;
+    }
+}
+------------------------------------------------------------
+in the switch case above, we check if the field is input or textarea.
+each of them accepts a className, all props.elementConfig and props.value !
+'select' field however, accepts a different config
+
+now in the form we want to use <Input /> and config the form, we have:
+------------------------------------------------------------
+form.js
+---------------
+state = {
+    orderForm: {
+        name: {
+            elementType: 'input',
+            elementConfig: {
+                type: 'text',
+                placeholder: 'Your Name'
+            },
+            value: ''
+        },
+        street: {
+            elementType: 'input',
+            elementConfig: {
+                type: 'text',
+                placeholder: 'Street'
+            },
+            value: ''
+        },
+        zipcode: {
+            elementType: 'input',
+            elementConfig: {
+                type: 'text',
+                placeholder: 'ZIP Code'
+            },
+            value: ''
+        },
+        country: {
+            elementType: 'input',
+            elementConfig: {
+                type: 'text',
+                placeholder: 'Country'
+            },
+            value: ''
+        },
+        email: {
+            elementType: 'input',
+            elementConfig: {
+                type: 'email',
+                placeholder: 'Your E-Mail'
+            },
+            value: ''
+        },
+        deleveryMethod: {
+            elementType: 'select',
+            elementConfig: {
+                options: [
+                    {va;ue: 'fastest', displayValue: 'Fastest'}
+                    {va;ue: 'cheapest', displayValue: 'Cheapest'}
+                ]
+            },
+            value: ''
+        }
+    },
+    loading: false
+}
+------------------------------------------------------------
+
+now we should do something to loop through the orderForm object and check any fileds with them.
+to loop through the object, we use 'for(let key in object)'
+and then we should return <Input> tags based on following template:
+<Input elementType="..." elementConfig="..." value="..." />
+
+to make the user able to change the fields, we should create a handler named inputChangeHandler()
+it accepts event and inputIdentifier that stands for which field we're changing its value. so we pass ids to it.
+------------------------------------------------------------
+form.js
+---------------
+inputChangeHandler = (event, inputIdentifier) => {
+    // console.log(event.target.value);
+    const updatedOrderForm = {
+        ...this.state.orderForm
+    };
+    const updatedFormElement = {
+        ...updatedOrderForm[inputIdentifier]
+    };
+    updatedFormElement.value = event.target.value;
+    updatedOrderForm[inputIdentifier] = updatedFormElement;
+    this.setState({orderForm: updatedOrderForm});
+}
+
+render() {
+    const formElementArray = [];
+    for (let key in this.state.orderForm){
+        formElementArray.push({
+            id: key,
+            config: this.state.orderForm[key]       //  the order[key] refers to the value of any keys on orderForm object. 
+        })                                              like: name, street, zipcode, country, email and deleveryMethod
+    }
+    let form = (
+        <form onSubmit={this.orderHandler}>
+        {formElementArray.map(formElement => (
+            <Input
+                key={formElement.id}
+                elementType={formElement.config.elementType}
+                elementConfig={formElement.config.elementConfig}
+                value={formElement.config.value}
+                change={(event) => this.inputChangeHandler(event, formElement.id)} />
+        ))}
+        </form>
+    )
+}
+------------------------------------------------------------
+
+for submitting the form, we use 'onSubmit' property on <form> tag.
+------------------------------------------------------------
+orderHandler = (event) => {
+    event.preventDefault();
+    this.setState( {loading: true });
+    const formData = {};
+    for (let formElementIdentifier in this.state.order) {
+        formData[formElementIdentifier] = this.state.orderForm[formElementIdentifier].value
+    }
+
+    const order = {
+        ingredients: this.props.ingredients,
+        price: this.props.price,
+        order: formData
+    }
+    
+    axios.post('/orders.json', order)
+        .then( response => {
+            this.setState( {loading: false });
+            this.props.history.push('/');
+        })
+        .catch(error => {
+            this.setState( {loading: false });
+        })
+}
+------------------------------------------------------------
+
+*** Redux ***
+
+createStore allows us to create a new Redux store. store should be initialized with reducer
+because reducer is the only thing that updates the state in the end. 'createStore(rootReducer)'
+reducer, takes 2 arguments: the current state and the action. the action is responsible to update the state.
+*** The Subscription helps us with informing about store whenever sth is changed.
+the 'store.subscribe()' method, takes a function as an argument and we can execute any code we want,,
+on state updates.
+------------------------------------
+const redux = require('redux');
+const createStore = redux.createStore;
+
+const initialState = {
+    counter: 0
+}
+
+// Reducer
+const rootReducer = (state = initialState, action) => {
+    if (action.type === "INC_COUNTER") {
+        return {
+            ...state,
+            counter: state.counter + 1
+        };
+    }
+    if (action.type === "ADD_COUNTER") {
+        return {
+            ...state,
+            counter: state.counter + action.value
+        };
+    }
+    return state;
+};
+
+// Store
+const store = createStore(rootReducer);
+console.log(store.getStore());
+
+// Dispatching Action
+store.dispatch({type: 'INC_COUNTER'});
+store.dispatch({type: 'ADD_COUNTER', value: 10});
+console.log(store.getStore());
+
+// Subscription - this gets called whenever application state is changed
+store.subscribe(() => {
+    console.log('[Subscription: ]' + store.getStore());
+})
+------------------------------------
+
+*** react-redux ***
+
+with this package, we can connect react to redux
+we wrapt our <App> component with <Provider> component. it helps to inject our store to the react components.
+it has a property named store that accepts the application store
+------------------------------------
+import React from 'react';
+import ReactDOM from 'react-dom';
+import { createStore } from 'redux';
+import { Provider } from 'react-redux';
+
+import reducer from './store/reducer';
+
+const store = createStore(reducer);
+
+ReactDOM.render(<Provider store={store}><App/></Provider>)
+------------------------------------
+
+*** mapStateToProps and mapDispatchToProps ***
+
+in mapStateToProps we bring the parts of the store that we want to use in our application state.
+in mapDispatchToProps we recieve a dispatch function as an input and includes our action creators.
+
+------------------------------------
+import { connect } from 'react-redux';
+
+const mapStateToProps = state => {
+    return {
+        prs: state.persons
+    }
+}
+
+const mapDispatchToProps = dispatch => {
+    return {
+        onAddedPerson: () => dispatch({type: actionTypes.ADD_PERSON}),
+        onRemovedPerson: (id) => dispatch({type: actionTypes.REMOVOE_PERSON, personId: id}),
+    }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(Persons);
+
+// Or directly add action creators without mapDispatchToProps
+
+export default connect(
+    mapStateToProps,
+    { onAddedPerson, onRemovedPerson }
+)(Persons);
+------------------------------------
+
+*** Async Redux - Middleware ***
+
+Middleware is a term used for functions or the code you hook into a process
+which then gets executed as part of that process without stopping it.
+------------------------------------
+
+*** Redux DevTool ***
+------------------------------------
+import { createStore, applyMiddleware, compose } from "redux";
+import thunk from "redux-thunk";
+import rootReducer from "./reducers";
+
+const initialState = {};
+
+const middleware = [thunk];
+
+// In development, use the browser's Redux dev tools extension if installed
+const enhancers = [];
+const isDevelopment = process.env.NODE_ENV === "development";
+if (
+  isDevelopment &&
+  typeof window !== "undefined" &&
+  // window.devToolsExtension
+  window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
+) {
+  enhancers.push(window.__REDUX_DEVTOOLS_EXTENSION__());
+}
+
+const store = createStore(
+  rootReducer,
+  initialState,
+  compose(
+    applyMiddleware(...middleware),
+    ...enhancers
+  )
+);
+
+export default store;
+
+-----------------------------------------------------
+
+*** Testing - Jest - Enzyme ***
+
+$npm i --save jest enzyme react-test-renderer enzyme-adaptor-react-16
+// enzyme-adaptor-react-16 is for react @16
+
+most of the components are just functions and are depended on props they recieve.
+suppose we want to write test for 'NavigationItems.js', so we create a file name 'NavigationItems.test.js'
+so the postfix is '.test.js'
+
+describe() method: this is automatically added to create-react-app project.
+it takes 2 arguments. the first is just a desciption. the second is a testing function.
+we write a test, with writing it(); it() allows us to write one individual test.
+
+it() also takes 2 arguments. first one is a desciption that will be shown in console.
+the desciption should complete the sentance.
+in second argument, we want to create an instance of this component as it would be rendered to the DOM,
+and have a look into the rendered component and see what it is rendered for the case that
+the isAuthenticated is false. so sounds like we should write the entire react component to the test,
+
+that's where Enzyme comes in... so we import 'enzyme' and 'enzyme-adaptor-react-16'
+with configure method, we connect the enzyme and with shallow method, we render the component.
+the shallow will render component but not deeply!
+-------------------------------------
+NavigationItems.js
+------------------
+const navigationItems = ( props ) => (
+    <ul className={classes.NavigationItems}>
+        <NavigationItems link="/" exact>Burger Builder</NavigationItems>
+        {props.isAuthenticated ? <NavigationItems link="/orders">Orders</NavigationItems> : null}
+        {!props.isAuthenticated
+        ?  <NavigationItems link="/auth">Authenticate</NavigationItems>
+        :  <NavigationItems link="/logout">Logout</NavigationItems>
+        }
+    </ul>
+)
+-------------------------------------
+
+NavigationItems.test.js
+------------------
+import React from 'react';
+
+import { configure, shallow } from 'enzyme';
+import Adaptor from 'enzyme-adaptor-react-16';
+
+import NavigationItems from './NavigationItems';
+import NavigationItem from './NavigationItem/NavigationItem';
+
+configure({adaptor: new Adaptor()});    // enzyme is connected
+
+describe('<NavigationItems />', () => {
+    it('should render two <NavigationItems /> elements if not authenticated', () => {
+        const wrapper = shallow(<NavigationItems />);           //  render the <NavigationItems> component.
+        expect(wrapper.find(NavigationItem)).toHaveLength(2);   //  find() method, looks at wrapper and see if it contains a certain content.
+    })                                                              here we want to see if <NavigationItems /> rendered for 2 times or not?
+})
+-------------------------------------
+
+$npm run test
+
+another test: (it checks if <NavigationItems are authenticated and rendered for 3 times.)
+-------------------------------------
+    it('should render three <NavigationItems /> elements if authenticated', () => {
+        const wrapper = shallow(<NavigationItems isAuthenticated />);
+        expect(wrapper.find(NavigationItem)).toHaveLength(3);
+    })    
+-------------------------------------
+beforeEach() will automatically be executed before each of our tests.
+we also have afterEach() function for cleanup
+here we initialized wrapper befor the tests and in the second test that needs a property, we used setProps();
+-------------------------------------
+describe('<NavigationItems />', () => {
+    let wrapper;
+
+    beforeEach(() => {
+        wrapper = shallow(<NavigationItems />);
+    });
+
+    it('should render two <NavigationItems /> elements if not authenticated', () => {
+        expect(wrapper.find(NavigationItem)).toHaveLength(2);
+    })   
+
+    it('should render three <NavigationItems /> elements if authenticated', () => {
+        wrapper.setProps({isAuthenticated: true});
+        expect(wrapper.find(NavigationItem)).toHaveLength(3);
+    })    
+    
+    it('should check if logout buttons is rendered if it is authenticated', () => {
+        expect(wrapper.contains(<NavigationItems link="/logout">Logout</NavigationItems>)).toEqual(true);
+    })    
+})
+-------------------------------------
+
+*** Test A Reducer ***
+
+-------------------------------------
+import reducer from './auth';
+import * as actionTypes from '../actions/actionTypes';
+
+describe('auth reducer', () => {
+    it('should return the initial state', () => {
+        expect(reducer(undefined, {})).toEqual({
+            token: null,
+            userId: null,
+            error: null,
+            loading: false,
+            authRedirectPatch: '/'
+        });
+    })
+
+    it('should store the token upon login', () => {
+        expect(reducer({
+            token: null,
+            userId: null,
+            error: null,
+            loading: false,
+            authRedirectPatch: '/'
+        }), {
+            type: actionTypes.AUTH_SUCCESS,
+            idToken: 'some-token',
+            userId: 'some-user-id',
+        })).toEqual({
+            token: 'some-token',
+            userId: 'some-user-id',
+            error: null,
+            loading: false,
+            authRedirectPatch: '/'
+        })
+    })
+})
+-------------------------------------
+https://jestjs.io/
+
+https://enzymejs.github.io/enzyme/
+
+-------------------------------------
+
+*** Webpack ***
+
+webpack bundle and optimize files and transform new and old versions of JS to current one.
+it bundle files to bundle.js, bundle.css and optimized JPG and PNG files.
+it always accepts one entry point which is the root javascript file which mounts react application.
+so webpack can build a dependency grarph for all files starting with root file.
+and then specify all the dependencies in a single file named bundle output file.
+in order to build bundle file with those dependencies, we need loaders (e.g. babel-loader, css-loader)
+we also need plugins where loaders are applied on, per file basis. In here we do the optimizations. (e.g. uglify)
+
+$ npm i --save-dev webpack webpack-dev-server
+
+in 'webpack.config.js' we have:
+----------------------------------------------
+const path = require('path');
+
+module.exports = {
+    mode: 'development',
+    entry: './src/index.js',
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        filename: 'bundle.js',
+        publicPath: ''
+    },
+    devtool: 'cheap-module-eval-source-map'
+};
+----------------------------------------------
+'path', point to the folder we want to store our generated bundle. it accepts an absolute path.
+with 'resolve(__dirname)' , this is the absolute path to wherer the webpack.config.js file lives in.
+'dist' means that the 'bundle.js; file should be stored in the 'dist' folder
+
+*** Babel ***
+
+to use modern javascript and compile them to ES5, and also make sure that the React JSX is undrestood.
+$ npm install --save-dev @babel/core @babel/cli @babel/preset-env
+$ npm install --save @babel/polyfill
+
+$ npm i --save-dev @babel/core @babel/preset-env @babel/preset-react @babel/preset-stage-2 babel-loader @babel/plugin-proposal-class-properties
+
+$ npm i --save-dev style-loader css-loader postcss-loader
+
+$ npm i --save-dev autoprefixer
+
+to support images, we should:
+$ npm i --save-dev url-loader
+
+to support HTML:
+$ npm i --save-dev html-webpack-plugin
+
+$ npm i --save-dev file-loader
+
+in Summery:
+---
+$ npm install --save @babel/polyfill
+$ npm install --save-dev @babel/core @babel/cli @babel/preset-env @babel/core @babel/preset-env @babel/preset-react @babel/preset-stage-2 babel-loader @babel/plugin-proposal-class-properties style-loader css-loader postcss-loader autoprefixer url-loader html-webpack-plugin file-loader
+---
+
+then we should add some configuration to 'webpack.config.js':
+----------------------------------------------
+const path = require('path');
+const autoprefixer = require('autoprefixer');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+module.exports = {
+    mode: 'development',    // or 'production'
+    entry: './src/index.js',
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        filename: 'bundle.js',
+        publicPath: ''
+    },
+    devtool: 'cheap-module-eval-source-map',    // change to 'none' for no source-map
+    module: {
+        rules: [
+            {                            // here we define that babel should handle our javascript files.
+                test: /\.js$/,           // any file ends with '.js' will get effected by the 'rules'
+                loader: "babel-loader",    // this tells webpack which tools takes over for this file
+                exclude: /node_modules/  // we don't want to transform any code there.
+            },
+            {                           
+                test: /\.css$/,         
+                exclude: /node_modules/ 
+                use:[
+                    {loader: 'style-loader'},
+                    {loader: 'css-loader', options: {
+                        importLoaders: 1,
+                        module: {
+                            localIdentName: '[name]__[local]__[hash:base64:5]'
+                        }
+                    }},
+                    {loader: 'postcss-loader', options: {
+                        ident: 'postcss',
+                        plugins: () => [autoprefixer()]     // which browser we want to support
+                    }}
+                ],
+            },
+            {                          
+                test: /\.(png|jpe?g|gif)$/,         
+                loader: "url-loader?/limit=8000&name=images/[name].[ext]",
+            }
+        ]
+    },
+    plugins: [
+        HtmlWebpackPlugin({
+            template: __dirname + '/src/index.html',     // we want to use index.html file as the starting point.
+            filename: 'index.html',
+            inject: 'body'
+        })
+    ]
+};
+----------------------------------------------
+
+and we need a configuration for babel in '.babelrc' file
+here we define that what babel does with our javascript files
+----------------------------------------------
+{
+    "presets": [    // all the presets we want to allpy to our code.
+        ["@babel/preset-env" ,{
+            "targets": {
+                "browsers": ["> 1%", "last 2 versions"]
+            }
+        }],
+        "@babel/preset-react"
+    ],
+    "plugins": [
+        "@babel/plugin-proposal-class-properties"
+    ]
+}
+----------------------------------------------
+
+in the package.json we have:
+
+"script": {
+    "start": "webpack-dev-server"
+    "build:prod": "webpack --config webpack.config.js"
+}
+----------------------------------------------
+
+***************
+*** Next.Js ***
+***************
+
+$ npm i --save next react react-dom
+
+in Nextjs, 'file-system' is the main API. we don't need React Router with Nextjs
+to create routes. Instead we create folders and files to reflect our URLs in the file-system!
+NextJs will automatically parse that and use its own internal router to handle all the things.
+it pre-renders the content we load as pages on the server and automatically
+code splits (lazy loads) all of that without configuring anything.
+
+we should create a root folder named 'pages'. here we write our react components.
+these folders, now define different paths!
+let's say you have a folder named 'auth' and a file named 'user.js' in it.
+you would reach this file at your 'domain/auth/user'
+if you name it 'index.js', you reach it with: 'domain/auth'
+if we have 'index.js' in the pages folder, we reach it with: 'www.domain.com/'
+
+you can build your files with hooks or class-based components.
+
+----------------------------------------------
+pages/index.js :
+----------------
+import React from 'react';
+import Link from 'next/link';
+import Router from 'next/Router';
+
+const indexPage = () => (
+    <div>
+        <h1>The Main Page</h1>
+        <p>Go to <Link href="/auth"><a>Auth</a></Link> </p>
+        <button onClick={() => Router.push('/auth')}>Go to Auth</button>
+    </div>
+)
+
+export default indexPage;
+----------------------------------------------
+
+pages/auth/index.js :
+----------------
+import React from 'react';
+
+const authIndexPage = () => (
+    <div>
+        <h1>The Auth Index Page</h1>
+    </div>
+)
+
+export default authIndexPage;
+----------------------------------------------
+
+packag.json :
+----------------
+"scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start",
+}
+----------------------------------------------
+
+now with '$ npm run dev' we can see our app in 'localhost:3000'
+
+we can still use the advantages of components with pages. we can create a file: '/components/User.js'
+----------------------------------------------
+/components/User.js
+-------------------
+import React from 'react';
+
+const user = (props) => {
+    <div>
+        <h1>{props.name}</h1>
+        <p>Age: {props.age}</p>
+    </div>
+}
+
+export default user; 
+----------------------------------------------
+
+so we can use this coponent anywhere we want:
+----------------------------------------------
+pages/auth/index.js :
+----------------
+import React from 'react';
+
+import User from '../../components/User';
+
+const authIndexPage = () => (
+    <div>
+        <h1>The Auth Index Page</h1>
+        <User name="Max" age={28}/>
+    </div>
+)
+
+export default authIndexPage;
+----------------------------------------------
+
+Styling in Nextjs:
+
+we should add <style jsx></style> element and we pass 'jsx' as a prop to it.
+it helps to write css styles in our jsx code. and then it apply it to the component
+we can style all JSX tags in the <style/> tag between `` .
+----------------------------------------------
+/components/User.js
+-------------------
+import React from 'react';
+
+const user = (props) => {
+    <div>
+        <h1>{props.name}</h1>
+        <p>Age: {props.age}</p>
+
+        <style jsx>{`
+            div {
+                border: 1px solid #eeeee;
+                box-shadow: 0 2px 3px #eeeee;
+                padding: 20px;
+                text-align: center;
+            }
+        `}</style>
+    </div>
+}
+
+export default user; 
+----------------------------------------------
+
+we also have a custom error handling in NextJs
+we can create our own error handler, with creating a file named '_error.js' in the pages folder
+----------------------------------------------
+./pages/_error.js
+-----------------
+import React from 'react';
+import Link from 'next/link';
+
+const errorPage = () => (
+    <div>
+        <h1>Something went wrong</h1>
+        <p>Try <Link href="/"><a>going back</a></Link> </p>
+    </div>
+)
+
+export default errorPage;
+----------------------------------------------
+
+now, instead of a default 404 page, we have our custom NotFound page.
+
+in Nextjs class-based components, we have a lifesycle method named 'getInitialProps()':
+we can use it to initialize the App, before it loads. The code in this method, will be executed on the server first.
+it will only be executed on the child if you navigated there within the app.(by clicking on a link for example)
+for example we can fetch data from the database and then pre-populate the props
+----------------------------------------------
+class IndexPage extends Component {
+    static async getInitialProps(context) {
+        console.log(context);
+        const responseObj = axios.get(`example.com/abc/def`)
+        // responseObj = {appName: "something"}
+        return responseObj;
+    }
+
+    render(){
+        return (
+            <div>
+                <h1>{this.props.appName}</h1>
+            </div>
+        )
+    }
+}
+----------------------------------------------
+
+in functional component we can use getInitialProps after our function:
+----------------------------------------------
+
+const authIndexPage = () => (
+    <div>
+        <h1>{props.appName}</h1>
+    </div>
+)
+
+authIndexPage.getInitialProps = (context) => {
+    const responseObj = axios.get(`example.com/abc/def`)
+    // responseObj = {appName: "something"}
+    return responseObj;
+}
+
+export default authIndexPage;
+----------------------------------------------
+
+*** React Animation ***
+
+how to take the advantage of animations in react component.
+
+imagine having these classes:
+-----
+.backdrop {
+    transition: all 0.3s ease-out;
+}
+
+.backdropOpen {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.backdropClose {
+    opacity: 0;
+    transform: translateY(-100%);
+}
+
+/////// OR ////////
+.backdrop {
+    transition: all 0.3s ease-out;
+}
+
+.backdropOpen {
+    animation: openBackdrop 0.4 ease-out forwards;
+} 
+
+@keyframes openBackdrop {
+    0% {
+        opacity: 0;
+        transform: translateY(-100%);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(20%);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0%);
+    }
+}
+-----
+
+in React component we have:
+-----
+const backdrop = (props) => {
+    const cssClasses = ['Backdrop', props.show ? 'backdropOpen' : 'backdropClose'];
+
+    return <div className={cssClasses.join(' ')}></div>
+}
+-----
+
+we can also build a condition for the pop-up elements. 
+---
+{this.state.modalIsOpen ? <Backdrop /> : null}
+---
+
+so whenever we close the popup window, it will be removed from the DOM, and its closed-animation won't work.
+
+
+*** React Transition Group ***
+
+https://reactcommunity.org/react-transition-group/transition
+
+$ npm install react-transition-group --save
+-------------------------------------------
+import { Transition } from 'react-transition-group';
+
+const Fade = ({ in: inProp }) => (
+  <Transition in={inProp} timeout={duration}>
+    {state => (
+      <div style={{
+        ...defaultStyle,
+        ...transitionStyles[state]
+      }}>
+        I'm a fade Transition!
+      </div>
+    )}
+  </Transition>
+);
+-------------------------------------------
+
+https://www.npmjs.com/package/react-transition-group
+
+for animating routers:
+https://reactrouter.com/web/example/animated-transitions
+
+https://react-move.js.org/#/
+
+https://www.npmjs.com/package/react-motion
+
+https://popmotion.io/   
+
+----------------------------------------------------------
+
+*** Redux Saga ***
+
+https://redux-saga.js.org/
+----------------------------------------------------------
+
+
+*******************
+*** React Hooks ***
+*******************
+
+useState() always returns an array with 2 elements.
+the first is the current state. either it's the initial state or the updated state.
+the second element is a function to allow us to update the state
+
+--------------------------------------------------
+import React, {useState} from 'react';
+
+const IngredientForm = React.memo(props => {
+    const inputState = useState({title: '', amount: ''});
+
+    const submitHandlerr = event => {
+        event.prreventDefault();
+    }
+
+    return (
+        <section>
+          <Card>
+            <form>
+              <div>
+                <label>Name</label>
+                <input type="text" value={inputState[0].title} onChange={event => inputState[1]({title: event.target.value, amount: inputState[0].amount})} />
+              </div>
+              <div>
+                <label>Amount</label>
+                <input type="text" value={inputState[0].amount} onChange={event => inputState[1]({amount: event.target.value, title: inputState[0].title})}/>
+              </div>
+            </form>
+          </Card>
+        </section>
+    );
+})
+--------------------------------------------------
+
+when we update state, we should ensure that we don't loose any old data. so if we change a part of state object, in our component,
+we still need to write the other part of the state and assign it to their previous value. like:
+---
+onChange={event => inputState[1]({title: event.target.value, amount: inputState[0].amount})}
+---
+we updated the 'title' of the state but we should ensure about 'amount' too.
+but we cannot be sure about it because maybe react has changed the state while we write this code.
+so the better approach is to pass a funtion to the second argument of useState array which returns the final state.
+and instead of 'inputState[0]' we use the 'prevState' argument
+---
+onChange={event => 
+    inputState[1]( (prevInputState) => ({
+          title: event.target.value, 
+          amount: prevInputState.amount
+    }));
+}
+---
+so we have:
+---
+return (
+    <section>
+    <Card>
+        <form>
+        <div>
+            <label>Name</label>
+            <input 
+                type="text" 
+                value={inputState[0].title} 
+                onChange={event => 
+                    const newTitle = event.target.value;
+                    inputState[1]( (prevInputState) => ({
+                        title: newTitle, 
+                        amount: prevInputState.amount
+                    }));
+                }
+            />
+        </div>
+        <div>
+            <label>Amount</label>
+            <input 
+                type="text" 
+                value={inputState[0].amount} 
+                onChange={event => 
+                    const newAmount = event.target.value;
+                    inputState[1]( (prevInputState) => ({
+                        title: prevInputState.title, 
+                        amount: newAmount, 
+                    }));
+                }
+            />
+        </div>
+        </form>
+    </Card>
+    </section>
+);
+-----------------------------------------------
+
+the better way to define the state of useState and its function is to use Array Destructuring:
+---
+const [ inputState, setInputState ] = useState({title: '', amount: ''});
+---
+
+so we can replace inputState[0] with 'inputState' and inputState[1] with 'setInputState'
+
+*** Multiple useState ***
+
+Instead of having a useState() for all of the state and having our state as a huge object,
+we can have multiple simple useStates for any part of our state!
+-------
+const [enteredTitle, setEnteredTitle] = useState('');
+const [enteredAmount, setEnteredAmount] = useState('');
+
+...
+
+<div>
+  <label>Amount</label>
+  <input 
+    type="text" 
+    value={enteredAmount} 
+    onChange={event => 
+      setEnteredAmount(event.target.value);
+    }
+  />
+</div>
+-------
+
+**************************************
+*** 2 Important Rules Of All Hooks ***
+**************************************
+
+1.  you can use Hooks just in functional components.
+2.  you can not use Hooks in nested functions and you should use them just in the root of your component
+    so we cannot use useState() or useEffect() in a handler function.
+    we are also not allowed to use hooks in if statements.
+
+
+*** event handlers ***
+
+here in below, we take the new ingredient object as argument and update the state with it
+we initialized our state with an empty array. with 'setUserIngredients' we add all new ingredients to the prevIngredients
+--------------------------------------------------
+Ingredients.js
+------------
+const [userIngredients, setUserIngredients] = useState([]);
+
+const addIngredientHandler = ingredient => {
+    setUserIngredients( prevIngredients => [
+        ...prevIngredients,
+        { id: Math.random(), ...ingredient }
+    ])
+}
+
+return (
+    <div>
+      <IngredientForm onAddIngredient={addIngredientHandler} />
+    </div>
+)
+--------------------------------------------------
+IngredientForm.js
+------------
+const [enteredTitle, setEnteredTitle] = useState('');
+const [enteredAmount, setEnteredAmount] = useState('');
+
+
+const submitHandler = event => {
+    event.preventDefault();
+    props.onAddIngredient({ title: enteredTitle, amount: enteredAmount });
+}
+...
+<form onSubmit={submitHandler}>
+    <div>
+        <label>Title</label>
+        <input 
+            type="text" 
+            value={enteredTitle} 
+            onChange={event => 
+              setEnteredTitle(event.target.value);
+            }
+        />
+    </div>
+    <div>
+        <label>Amount</label>
+        <input 
+            type="text" 
+            value={enteredAmount} 
+            onChange={event => 
+              setEnteredAmount(event.target.value);
+            }
+        />
+    </div>
+</form>
+--------------------------------------------------
+
+*****************
+*** useEffect ***
+*****************
+
+it is to manage side effects like in HTTP requests. (fetch or post data)
+*** useEffect gets executed right after every component render a cycle!
+if we put an HTTP request out of useEffect(), we end up with an infinite loop.
+because maybe we want to update the state, so any time the component renders, it wants to
+update the state which causes a loop.
+if we put the same HTTP request in the useEffect(), we still end up with an infinite loop. but
+useEffect() acts like componentDidUpdate: it runs the function AFTER EVERY component updates. (re-render).
+useEffect() also takes 2 arguments. the first is the function that gets executed After Every cycle,
+the second argument is an array with the dependencies of your function. and only if this dependency changes,
+the funtion will be run.
+so the default is to run the function for every render cycle, but we can change this.
+*** if we used an empty array '[]' for the second argument, useEffect() will work like componentDidMount():
+it runs ONLY ONCE (after the first render)
+--------------------------------------------------
+useEffect(() => {
+    fetch('https://some-source.json')
+        .then(response => response.json())
+        .then(responseData => {
+            const loadedIngredients = [];       // here we have a constant array. but as we push data to the same array, we don't need to change it to 'let'.
+            for (const key in responseData) {
+                loadedIngredients.push({
+                    id: key,
+                    title: responseData[key].title,
+                    amount: responseData[key].amount
+                })
+            }
+            setUserIngredients(loadedIngredients);
+        })
+}. []);
+--------------------------------------------------
+
+we can use as many as useEffects that we want.
+--------------------------------------------------
+useEffect(() => {
+    console.log("RENDERING INGREDIENTS");   // it gets executed after every render.
+});                                         // because it doesn't have a second argument.
+--------------------------------------------------
+useEffect(() => {
+    console.log("User ingredients: ", userIngredients);     // it only gets executed after userIngredients has been changed.
+}, [userIngredients]);
+--------------------------------------------------
+
+*** inputs with useEffect() ***
+
+to manage the input fields with useEffect(), we have:
+--------------------------------------------------
+import React, {useState, useEffect} from 'react';
+
+const Search = React.memo(props => {
+    const [enteredFilter, setEnteredFilter] = useState(''); 
+
+    useEffect(() => {
+        fetch('https://some-source.json')
+        .then(response => response.json())
+        .then(responseData => {
+            const loadedIngredients = [];       // here we have a constant array. but as we push data to the same array, we don't need to change it to 'let'.
+            for (const key in responseData) {
+                loadedIngredients.push({
+                    id: key,
+                    title: responseData[key].title,
+                    amount: responseData[key].amount
+                })
+            }
+            props.onLoadIngredients(loadedIngredients);
+        })
+    }, [enteredFilter]);    // this function gets executed whenever enteredFilter changed.
+
+    return (
+        <section>
+          <Card>
+            <div>
+              <label>Filter by Title</label>
+              <input 
+                type="text"
+                value={enteredFilter}
+                onChange={event => 
+                  setEnteredFilter(event.target.value);
+                }
+              />
+            </div>
+          </Card>
+        </section>
+    )
+})
+--------------------------------------------------
+
+as you might see, we wrote 'props.onLoadIngredients(loadedIngredients);' in useEffect.
+so we should also consider 'props' as dependency, so if props changes, useEffect should gets called.
+like: '[enteredFilter, props]'
+
+but it has an issue, because. now, every time any part of the props gets changed, this useState gets called.
+that's why we need to use Object Destructuring:
+--------------------------------------------------
+const Search = React.memo(props => {
+
+    const { onLoadIngredients } = props;
+
+    const [enteredFilter, setEnteredFilter] = useState(''); 
+
+    useEffect(() => {
+        fetch('https://some-source.json')
+        .then(responseData => {
+            ...
+            onLoadIngredients(loadedIngredients);
+        })
+    }, [enteredFilter, onLoadIngredients]);
+
+--------------------------------------------------
+so here we caught the 'onLoadIngredients' from all of the passing 'props'.
+
+*******************
+*** useCallback ***
+*******************
+
+whenever we use useEffect() which depends on 1 or more dependencies, the component will be rerendered.
+also the parent of that component will get rerendered if they will be connected and changes each other's state.
+And also any functions in those components, will be re-created again. (not just executed again. because it is a functional component)
+to avoid that, we use useCallback().
+
+useCallback() hook, allows us to wrap one of our functions with it and takes 2 arguments.
+the first is the function we pass to it.
+the second is also an array with dependencies.
+
+-----------------------------------
+const filteredIngredientsHandler = useCallback(filteredIngredients => {
+    setUserIngredients(filteredIngredients);
+}, []);
+-----------------------------------
+now that we passed the function to this useCallback() method and passed an empty array, the useCallback will wrap the function,
+and whenever the component will be rerendered, this function will not re-created, so it will not change.
+so the passing function to the child component will be the same, so the props for the child components
+will not change, so they won't get rerendered.
+
+
+**************
+*** useRef ***
+**************
+
+------------------------------------------------------------
+import React, {useState, useEffect, useRef} from 'react';
+
+const Search = React.memo(props => {
+    const inputRef = useRef();
+    ...
+
+    useEffect(() => {
+        setTimeout(() => {
+            if (enteredFilter === inputRef.current.value) {
+                // send http req.
+            }
+        }, 500);
+    }, [enteredFilter, onLoadIngredients, inputRef])
+
+    <input 
+      ref={inputRef}
+      type="text"
+      value={enteredFilter}
+      onChange={event => setEnteredFilter(event.target.value)}
+    />
+})
+------------------------------------------------------------
+
+the code above, gets called anytime the <input> value and the state was similar to each other.
+but we also need to clean the older timers.
+the best place to that, is in the return statement of the useEffect().
+you don't need to return anything from useEffect, but you can return something as a function for cleaning-up.
+this return function will run just right before the second time that the same useEffect wants to rerun.
+*** so not after the useEffect is done, but before the next time it wants to run.
+*** if you have [] dependencies (i.e. the effect only runs once), the
+cleanup function runs when the component gets unmounted.
+
+so in the cleanup function we can call the cleanTimeout() function.
+------------------------------------------------------------
+const Search = React.memo(props => {
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (enteredFilter === inputRef.current.value) {
+                // send http req.
+            }
+        }, 500);
+
+        return () => {
+            clearTimeout(timer);
+        }
+    }, [enteredFilter, onLoadIngredients, inputRef])
+
+})
+------------------------------------------------------------
+
+******************
+*** useReducer ***
+******************
+
+sometimes we have several useStates that are somehow depended to each other.
+sometimes we want to update or re-execute a useEffect, based on the changes in another state.
+in such cases that we're depended on the older state or want to update state based on other new state object
+we should use useReducer instead of useState.
+like:
+------------------
+const [userIngredients, setUserIngredients] = useState([]);
+const [isLoading, setIsLoading] = useState(false);
+const [error, setError] = useState();
+------------------
+
+reducers are always take some inputs and return some output
+*** we define the reducer function outside the component. so this reducer function isn't recreated
+whenever the component rerender. but we use useReducer inside the component.
+
+the reducer function takes 2 arguments at the end.
+1.  is the current state
+2.  an Action
+
+--------------------------------------------------
+import React, {useReducer, useState, useEffect, useRef} from 'react';
+
+// State Reducer
+const ingredientReducer = (currentIngredients, action) => {
+    switch (action.type) {
+        case 'SET':
+        case 'ADD':
+        case 'DELETE':
+        default:
+            throw new Error('Should not get there!');
+    }
+}
+
+// Functional Component
+const Ingredients = () => {
+    ...
+}
+
+--------------------------------------------------
+
+so in the state reducer, we should take care of all cases we might have.
+like Setting the state or add or delete items from it.
+--------------------------------------------------
+const ingredientReducer = (currentIngredients, action) => {
+    switch (action.type) {
+        case 'SET':
+            return action.ingredients;      // it replace old state with new ingredients
+        case 'ADD':
+            return [...currentIngredients, action.ingredient];      // we add an item to the state
+        case 'DELETE':
+            return currentIngredients.filter( ing => ing.id !== action.id);
+        default:
+            throw new Error('Should not get there!');
+    }
+}
+--------------------------------------------------
+
+now we need to initialize it by calling useReducer() :
+useReducer() takes our Reducer Function, and also an optional second argument that is the starting state.
+in here we pass an empty array.
+it also returns an array that the first is the state and the second item is the 'dispatch' funtion.
+we can use dispatch function to change state, so we should pass the action to dispatch().
+the action is typically an object that has a 'type' property and some extra data.
+
+*** When working with useReducer(), React will re-render the component whenever your reducer returns the new state.
+
+--------------------------------------------------
+import React, {useReducer, useState, useEffect, useRef} from 'react';
+
+// State Reducer
+const ingredientReducer = (currentIngredients, action) => {
+    switch (action.type) {
+        case 'SET':
+            return action.ingredients;      // it replace old state with new ingredients
+        case 'ADD':
+            return [...currentIngredients, action.ingredient];      // we add an item to the state
+        case 'DELETE':
+            return currentIngredients.filter( ing => ing.id !== action.id);
+        default:
+            throw new Error('Should not get there!');
+    }
+}
+
+// Functional Component
+const Ingredients = () => {
+    // Do:
+    const [userIngredients, dispatch] = useReducer(ingredientReducer);
+    
+    // instead of:
+    const [userIngredients, setUserIngredients] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState();
+
+    ...
+
+    const filteredIngredientsHandler = useCallback(filteredIngredients => {
+        // setUserIngredients(filteredIngredients);
+
+        dispatch({type: 'SET', ingredient: {filteredIngredients} });
+        
+        // OR
+        
+        dispatch({type: 'ADD', ingredient: {id: res.name, ...ingredient} });
+
+        // OR 
+
+        dispatch({type: 'DELETE', ingredient: {id: res.name} });
+
+    }, []);
+
+}
+--------------------------------------------------
+
+Another example for updating old state:
+
+--------------------------------------------------
+const httpReducer = (httpState, action) => {
+    switch (action.type) {
+        case 'SEND':
+            return  { loading: true, error: null }; 
+        case 'RESPONSE':
+            return  { ...httpReducer, loading: false }; 
+        case 'ERROR':
+            return  { loading: false, error: action.errorMessage }; 
+        case 'CLEAR':
+            return  { ...httpReducer, error: null }; 
+        default:
+            throw new Error('Should not be reached!')
+    }
+}
+
+...
+
+const Ingredient = () => {
+    const [httpState, dispatchHttp] = useReducer(httpReducer, { loading: false, error: null});
+}
+
+...
+
+dispatchHttp({type: 'SEND'});
+dispatchHttp({type: 'RESPONSE'});
+dispatchHttp({type: 'ERROR', errorMessage: 'something went wrong!'});
+dispatchHttp({type: 'CLEAR'});
+--------------------------------------------------
+
+******************
+*** useContext ***
+******************
+
+if we want to use context for such a file named 'Auth.js', we can create its context in 'auth-context.js'
+--------------------------------------------------
+auth-context.js
+---------------------
+import React, {useState} from 'react';
+
+export const AuthContext = React.createContext({
+    isAuth: false,      // manage that authenticated or not
+    login: () => {}     // 
+});
+
+// create the component:
+const AuthContextProvider = props => {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    const loginHandler = () => {
+        setIsAuthenticated(true);
+    }
+
+    return (
+        // the AuthContext is a valid react component that supports '.Provider'
+        // 'AuthContext.Provider' accepts a value that we can use to overwrite the initial context value with.
+
+        <AuthContext.Provider 
+          value={{login: loginHandler, isAuth: isAuthenticated}}
+        >
+            {props.children}
+        </AuthContext.Provider>
+    )
+};
+
+export default AuthContextProvider;
+--------------------------------------------------
+
+now we can use it in the root of our application in the index.js
+--------------------------------------------------
+index.js
+---------------------
+import React from 'react';
+import ReactDOM from 'react-dom';
+
+import App from './App';
+import AuthContextProvider from './context/auth-context';
+
+ReactDOM.render(
+    <AuthContextProvider>
+        <App />
+    </AuthContextProvider>,
+    document.getElementById('root');
+);
+--------------------------------------------------
+
+so now, the entire app is able to recieve our Auth Context
+
+now if you want to use the context in a functional component, you can use '.Consumer' on the context:
+--------------------------------------------------
+App.js
+---------------------
+import React from 'react';
+
+import Auth from './components/Auth';
+import {AuthContext} from './context/auth-context';
+
+const App = props => {
+    return (
+        <AuthContext.Consumer>
+            <Auth />
+        </AuthContext.Consumer>
+    )
+};
+
+export default App;
+--------------------------------------------------
+
+there is a hook for getting access to the content which its name is 'useContext'.
+you pass the context you want to listen, and store it to a constant variable.
+--------------------------------------------------
+App.js
+---------------------
+import React, {useContext} from 'react';
+
+import Ingredients from './components/Ingredients';
+import Auth from './components/Auth';
+
+import {AuthContext} from './context/auth-context';
+
+const App = props => {
+    const authContext = useContext(AuthContext);
+
+    let content = <Auth />;
+    if (authContext.isAuth) {
+        content = <Ingredients />
+    }
+
+    return  content;
+};
+
+export default App;
+--------------------------------------------------
+
+here we check if the user is authenticated or not. if so, it will show the <Ingredient/> component
+if not, it will show the <Auth/> component that is for logging in.
+
+in the <Auth/> component, we also have:
+--------------------------------------------------
+Auth.js
+------------------
+import React, {useContext} from 'react';
+
+import {AuthContext} from '../context/auth-context';
+
+const Auth = props => {
+    const authContext = useContext(AuthContext);
+
+    const loginHandler = () => {
+        authContext.login();
+    };
+
+    return  (
+        <div>
+          <h2>You are not authenticated</h2>
+          <button onClick={loginHandler}>Log in</button>
+        </div>
+    );
+};
+
+export default Auth;
+--------------------------------------------------
+
+***************
+*** useMemo ***
+***************
+
+How to avoid unnecessary rerender cycles?
+we can wrap entire component with 'React.memo' and it helps us to avoid unnecessary renders.
+--------------------------------------------------
+const IngredientList = React.memo(props => {
+    ...    
+})
+--------------------------------------------------
+
+An alternative to React.memo is 'useMemo':
+'useCallback' is a hook to save a function that doesn't change, so no new function is generated.
+'useMemo' is a hook where you can save a value (varriable) which is saved. so the value isn't re-created.
+these are the ways to memorizing the component. like:
+it also accepts the second argument for dependencies.
+this tells react when it should rerun this function to create a new object that it should memorize
+--------------------------------------------------
+const ingredinetList: useMemo(() => {
+    return (
+        <IngredientList
+          ingredients={userIngredients}
+          onRemovedItem={removeIngredinetHandler}
+        />
+    )
+}, [userIngredients, removeIngredinetHandler]);     // React rerun this function when either userIngredients or removeIngredinetHandler is changed.
+--------------------------------------------------
+
+
+********************
+*** Custom Hooks ***
+********************
+
+suppose that we want to create a custom hook for handling HTTP requests.
+we create a hook named 'useHttp()'. we can use any other hooks in our custom hook.
+-------------------------------------------------
+http.js
+------------------
+import {useReducer} from 'react';
+
+// this function won't recreated
+const httpReducer = (httpState, action) => {
+    switch (action.type) {
+        case 'SEND':
+            return  { loading: true, error: null }; 
+        case 'RESPONSE':
+            return  { ...httpReducer, loading: false }; 
+        case 'ERROR':
+            return  { loading: false, error: action.errorMessage }; 
+        case 'CLEAR':
+            return  { ...httpReducer, error: null }; 
+        default:
+            throw new Error('Should not be reached!')
+    }
+}
+
+// The hook will rer-run with everry re-render cycle.
+const useHttp = () => {
+    const [httpState, dispatchHttp] = useReducer(httpReducer, { 
+        loading: false, 
+        error: null
+    });
+
+
+    const sendRequest = useCallback((url, method, body) => {
+        ...
+    }, []);
+    
+    return {
+        isLoading: httpState.loading,
+        data: httpState.data,
+        error: httpState.error,
+        sendRequest: sendRequest,
+    }
+};
+
+export default useHttp
+-------------------------------------------------
+
+in other files, we can use useHttp() as:
+-------------------------------------------------
+const { isLoading, error, data, sendRequest} = useHttp();
+-------------------------------------------------
+
+
+****************************************
+*** Replacing Redux with Context API ***
+****************************************
+
+maybe you don't want to add extra redux library to your project.
+suppose we have a list of products that we catch from the server. so we're gonna have files
+for redux actions and redux reducers.
+but instead, we want to write them with context API.
+here we create our context named 'ProductContext' as a component with 'createContext'.
+it should manage object with products property which holds an array of products.
+--------------------------------------------------
+products-context.js
+------------------
+import React, {useState} from 'react';
+
+// export context:
+export const ProductContext = React.createContext({
+    products: [],
+    toggleFav: () => {}
+});
+
+// export component:
+export default props => {
+    const [productsList, setProductsList] = useState([
+        {
+            id: 'p1',
+            title: 'Red Scarf',
+            description: 'A pretty red scarf',
+            isFavorite: false
+        },{
+            id: 'p2',
+            title: 'Blue T-Shirt',
+            description: 'A pretty Blue T-Shirt',
+            isFavorite: false
+        },{
+            id: 'p3',
+            title: 'Green Trousers',
+            description: 'A pair of lightly green trousers.',
+            isFavorite: false
+        },{
+            id: 'p4',
+            title: 'Orange Hat',
+            description: 'Street Style!',
+            isFavorite: false
+        }
+    ]);
+
+    const toggleFavorite = (productId) => {
+        setProductsList(currentProdList => {
+            const prodIndex = currentProdList.findIndex(p => p.id === productId);
+            const newFavStatus = !currentProdList[prodIndex].isFavorite;
+            const updatedProducts = [...currentProdList];
+            updatedProducts[prodIndex] = {
+                ...currentProdList[prodIndex],
+                isFavorite: newFavStatus
+            };
+            return updatedProducts;
+        });
+    };
+
+    return (
+        <ProductContext.Provider
+          value={ {products: productsList, toggleFav: toggleFavorite } }
+        >
+            {props.children}
+        </ProductContext.Provider>
+    )
+}
+--------------------------------------------------
+
+so anytime the state of above component will get changed, the value of
+'<ProductContext.Provider value={}>' will get a new value, and every child 
+that listens to our 'Provider', will be able to get that new value.
+
+so previously we used the '<Provider>' tag from 'react-redux' package.
+but now, since we're using Context API , we can get rid of these 2 lines:
+-----------------------------------------------
+import { Provider } from 'react-redux';
+import { combineReducers, createStore } from 'redux';
+-----------------------------------------------
+instead write:
+-----------------------------------------------
+// ProductsProvider is default exported:
+import ProductsProvider from './context/prroducts-context';
+
+ReactDOM.render(
+    <ProductsProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ProductsProvider>
+)
+-----------------------------------------------
+
+so we don't need to pass 'store' to the Provider.
+so any child of '<ProductsProvider/>' can listen to that context.
+for example we can get access to those contexts from the '<Products>' component.
+so we import the exact context from the 'products-context.js' file.
+and we can use 'useContext()' to get our products from that context.
+with 'useContext(ProductsContext);' we have access to that context.
+-----------------------------------------------
+Products.js
+---------------
+import React, { useContext } from 'react';
+import { ProductsContext } from '../context/products-context';
+
+const Products = props => {
+    const productList = useContext(ProductsContext).products;
+    return (
+        <ul>
+            {productList.map(prod => (
+                <ProductItem
+                  key={prod.id}
+                  id={prod.id}
+                  title={prod.title}
+                  description={prod.description}
+                  isFav={prod.isFavorite}
+                />
+            ))}
+        </ul>
+    )
+}
+-----------------------------------------------
+
+*********************
+***** IMPORTANT *****
+*********************
+
+the Downsides of this approach:
+The context is great for low-frequency updates but not for high frequency ones.
+so if we have something that changes rarely (like user Authentication status) that is
+fine to be covered with Context API. but for high frequency update, we should use another approach.
+*** Because every component that uses 'useContext()', will rebuild or re-rendered 
+    when you switch sth in that context. it's no matter if it's directly effected or not.
+
+
+*** The Second Alternative To Redux Is Custom Hooks As a Store ***
+
+--------------------------------------------------------------
+import { useState, useEffect } from 'react';
+
+let store = {};         // global state
+let listeners = [];
+let actions = {};
+
+export const useStore = (listen = true) => {
+  const setStore = useState(store)[1];
+
+  const dispatch = action => {
+    const { type, payload } = action;
+
+    const newStore = actions[type](store, payload);
+    store = { ...store, ...newStore };
+
+    for (const listener of listeners) {
+      listener(store);
+    }
+  };
+
+  useEffect(() => {
+    if (!listen) return;
+
+    listeners.push(setStore);
+
+    return () => {
+      listeners = listeners.filter(l => l !== setStore);
+    };
+  }, [setStore, listen]);
+
+  return [store, dispatch];
+};
+
+export const initStore = (newStore, newActions) => {
+  if (newStore) {
+    store = { ...store, ...newStore };
+  }
+
+  actions = { ...actions, ...newActions };
+};
+
+--------------------------------------------------------------
